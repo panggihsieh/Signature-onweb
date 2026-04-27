@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>線上補簽同意書</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Signature on Web</p>
+        <h1>線上補簽同意書</h1>
+      </div>
+      <nav class="tabs" aria-label="工作模式">
+        <button id="teacherTab" class="tab active" type="button">老師端</button>
+        <button id="parentTab" class="tab" type="button">家長端</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="teacherView" class="workspace active" aria-label="老師端">
+        <aside class="panel">
+          <div class="section-title">
+            <span>1</span>
+            <h2>建立同意書</h2>
+          </div>
+          <label class="field">
+            <span>同意書標題</span>
+            <input id="docTitle" type="text" value="校外教學家長同意書" />
+          </label>
+          <label class="field">
+            <span>複製貼上內容</span>
+            <textarea id="docText" rows="11">親愛的家長您好：
+
+本校將辦理校外教學活動，活動期間由導師與行政人員全程陪同。請家長詳閱活動內容後，於下方簽名欄完成補簽。
+
+活動日期：2026/05/08
+集合時間：上午 08:00
+返校時間：下午 16:30
+活動地點：自然教育中心
+
+本人已了解活動安排，並同意子女參與本次活動。</textarea>
+          </label>
+          <div class="field">
+            <span>上傳檔案</span>
+            <label class="upload">
+              <input id="fileInput" type="file" accept="image/*,.txt" />
+              <strong>選擇圖片或文字檔</strong>
+              <small>圖片會作為同意書底圖，文字檔會匯入內容</small>
+            </label>
+          </div>
+          <label class="field">
+            <span>Google Drive 同意書連結</span>
+            <input id="driveLink" type="url" placeholder="https://drive.google.com/..." />
+          </label>
+
+          <div class="section-title">
+            <span>2</span>
+            <h2>調整簽名欄位</h2>
+          </div>
+          <div class="toolbar">
+            <button id="addSignature" class="primary" type="button">新增簽名欄</button>
+            <button id="clearFields" type="button">清除欄位</button>
+          </div>
+          <p class="hint">拖曳簽名欄移動位置，右下角可調整大小。</p>
+
+          <div class="section-title">
+            <span>3</span>
+            <h2>送出給家長</h2>
+          </div>
+          <button id="generateLink" class="primary full" type="button">產生家長連結</button>
+          <label class="field">
+            <span>家長連結</span>
+            <textarea id="parentLink" rows="4" readonly></textarea>
+          </label>
+          <button id="copyLink" type="button" class="full">複製連結</button>
+        </aside>
+
+        <section class="document-shell">
+          <div class="doc-actions">
+            <p>老師預覽</p>
+            <button id="downloadTeacherImage" type="button">下載預覽圖片</button>
+          </div>
+          <div id="teacherDoc" class="document teacher-doc">
+            <img id="teacherImage" class="doc-image" alt="" />
+            <div class="paper-text">
+              <h2 id="previewTitle"></h2>
+              <div id="previewText"></div>
+              <p id="previewDrive" class="drive-note"></p>
+            </div>
+            <div id="fieldLayer" class="field-layer"></div>
+          </div>
+        </section>
+      </section>
+
+      <section id="parentView" class="workspace" aria-label="家長端">
+        <aside class="panel compact">
+          <div class="section-title">
+            <span>4</span>
+            <h2>家長簽名</h2>
+          </div>
+          <p class="hint">點選文件上的簽名欄後，在手寫板完成簽名，再下載完成圖片。</p>
+          <label class="field">
+            <span>簽名欄</span>
+            <select id="signatureSelect"></select>
+          </label>
+          <div class="signature-pad-wrap">
+            <canvas id="signaturePad" width="520" height="180" aria-label="手寫簽名板"></canvas>
+          </div>
+          <div class="toolbar">
+            <button id="clearSignature" type="button">清除簽名</button>
+            <button id="applySignature" class="primary" type="button">套用簽名</button>
+          </div>
+          <button id="downloadParentImage" class="primary full" type="button">下載完成圖片</button>
+        </aside>
+
+        <section class="document-shell">
+          <div class="doc-actions">
+            <p>家長預覽</p>
+          </div>
+          <div id="parentDoc" class="document">
+            <img id="parentImage" class="doc-image" alt="" />
+            <div class="paper-text">
+              <h2 id="parentTitle"></h2>
+              <div id="parentText"></div>
+              <p id="parentDrive" class="drive-note"></p>
+            </div>
+            <div id="parentFieldLayer" class="field-layer"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
