@@ -45,15 +45,12 @@
           <div class="field">
             <span>上傳檔案</span>
             <label class="upload">
-              <input id="fileInput" type="file" accept="image/*,.txt" />
-              <strong>選擇圖片或文字檔</strong>
-              <small>圖片會作為同意書底圖，文字檔會匯入內容</small>
+              <input id="fileInput" type="file" accept="image/*,application/pdf,.pdf" />
+              <strong>選擇圖片或 PDF</strong>
+              <small>每次上傳上限 5MB，PDF 第一版使用第 1 頁作為簽名底圖</small>
             </label>
           </div>
-          <label class="field">
-            <span>Google Drive 同意書連結</span>
-            <input id="driveLink" type="url" placeholder="https://drive.google.com/..." />
-          </label>
+          <p id="uploadStatus" class="status">尚未上傳檔案，仍可先用文字內容建立同意書。</p>
 
           <div class="section-title">
             <span>2</span>
@@ -69,26 +66,23 @@
             <span>3</span>
             <h2>送出給家長</h2>
           </div>
+          <button id="downloadBlankPreview" class="full" type="button">下載空白簽名欄預覽圖</button>
           <button id="generateLink" class="primary full" type="button">產生家長連結</button>
           <label class="field">
             <span>家長連結</span>
             <textarea id="parentLink" rows="4" readonly></textarea>
           </label>
           <button id="copyLink" type="button" class="full">複製連結</button>
+          <p id="caseStatus" class="status"></p>
         </aside>
 
         <section class="document-shell">
           <div class="doc-actions">
             <p>老師預覽</p>
-            <button id="downloadTeacherImage" type="button">下載預覽圖片</button>
+            <button id="downloadTeacherImage" type="button">下載空白預覽</button>
           </div>
           <div id="teacherDoc" class="document teacher-doc">
-            <img id="teacherImage" class="doc-image" alt="" />
-            <div class="paper-text">
-              <h2 id="previewTitle"></h2>
-              <div id="previewText"></div>
-              <p id="previewDrive" class="drive-note"></p>
-            </div>
+            <canvas id="teacherCanvas" class="doc-canvas"></canvas>
             <div id="fieldLayer" class="field-layer"></div>
           </div>
         </section>
@@ -113,6 +107,8 @@
             <button id="applySignature" class="primary" type="button">套用簽名</button>
           </div>
           <button id="downloadParentImage" class="primary full" type="button">下載完成圖片</button>
+          <p id="parentStatus" class="status"></p>
+          <img id="completedImage" class="completed-image" alt="完成圖片預覽" />
         </aside>
 
         <section class="document-shell">
@@ -120,12 +116,7 @@
             <p>家長預覽</p>
           </div>
           <div id="parentDoc" class="document">
-            <img id="parentImage" class="doc-image" alt="" />
-            <div class="paper-text">
-              <h2 id="parentTitle"></h2>
-              <div id="parentText"></div>
-              <p id="parentDrive" class="drive-note"></p>
-            </div>
+            <canvas id="parentCanvas" class="doc-canvas"></canvas>
             <div id="parentFieldLayer" class="field-layer"></div>
           </div>
         </section>

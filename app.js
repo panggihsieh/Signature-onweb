@@ -1,11 +1,19 @@
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const DEFAULT_DOC = {
+  width: 900,
+  height: 1200,
+};
+
 const state = {
+  mode: "teacher",
+  caseId: "",
   title: "",
   text: "",
-  driveLink: "",
-  image: "",
+  file: null,
   fields: [],
   signatures: {},
   selectedFieldId: "",
+  sourceCanvas: document.createElement("canvas"),
 };
 
 const els = {
@@ -15,175 +23,307 @@ const els = {
   parentView: document.querySelector("#parentView"),
   docTitle: document.querySelector("#docTitle"),
   docText: document.querySelector("#docText"),
-  driveLink: document.querySelector("#driveLink"),
   fileInput: document.querySelector("#fileInput"),
-  previewTitle: document.querySelector("#previewTitle"),
-  previewText: document.querySelector("#previewText"),
-  previewDrive: document.querySelector("#previewDrive"),
+  uploadStatus: document.querySelector("#uploadStatus"),
+  caseStatus: document.querySelector("#caseStatus"),
+  parentStatus: document.querySelector("#parentStatus"),
   teacherDoc: document.querySelector("#teacherDoc"),
-  teacherImage: document.querySelector("#teacherImage"),
+  parentDoc: document.querySelector("#parentDoc"),
+  teacherCanvas: document.querySelector("#teacherCanvas"),
+  parentCanvas: document.querySelector("#parentCanvas"),
   fieldLayer: document.querySelector("#fieldLayer"),
+  parentFieldLayer: document.querySelector("#parentFieldLayer"),
   addSignature: document.querySelector("#addSignature"),
   clearFields: document.querySelector("#clearFields"),
   generateLink: document.querySelector("#generateLink"),
   parentLink: document.querySelector("#parentLink"),
   copyLink: document.querySelector("#copyLink"),
   downloadTeacherImage: document.querySelector("#downloadTeacherImage"),
-  parentDoc: document.querySelector("#parentDoc"),
-  parentImage: document.querySelector("#parentImage"),
-  parentTitle: document.querySelector("#parentTitle"),
-  parentText: document.querySelector("#parentText"),
-  parentDrive: document.querySelector("#parentDrive"),
-  parentFieldLayer: document.querySelector("#parentFieldLayer"),
+  downloadBlankPreview: document.querySelector("#downloadBlankPreview"),
   signatureSelect: document.querySelector("#signatureSelect"),
   signaturePad: document.querySelector("#signaturePad"),
   clearSignature: document.querySelector("#clearSignature"),
   applySignature: document.querySelector("#applySignature"),
   downloadParentImage: document.querySelector("#downloadParentImage"),
+  completedImage: document.querySelector("#completedImage"),
 };
 
 const signatureContext = els.signaturePad.getContext("2d");
 let drawing = false;
 
-function init() {
-  hydrateFromHash();
+init();
+
+async function init() {
   bindEvents();
-  syncFromInputs();
-  if (!state.fields.length) addField();
-  renderAll();
+  syncTextInputs();
+  clearSignaturePad();
+
+  const caseId = new URLSearchParams(location.search).get("case");
+  if (caseId) {
+    await loadParentCase(caseId);
+    return;
+  }
+
+  await drawTextSource();
+  addField();
+  setMode("teacher");
 }
 
 function bindEvents() {
   els.teacherTab.addEventListener("click", () => setMode("teacher"));
   els.parentTab.addEventListener("click", () => setMode("parent"));
-  els.docTitle.addEventListener("input", syncFromInputs);
-  els.docText.addEventListener("input", syncFromInputs);
-  els.driveLink.addEventListener("input", syncFromInputs);
+  els.docTitle.addEventListener("input", async () => {
+    syncTextInputs();
+    if (!state.file) await drawTextSource();
+    renderAll();
+  });
+  els.docText.addEventListener("input", async () => {
+    syncTextInputs();
+    if (!state.file) await drawTextSource();
+    renderAll();
+  });
   els.fileInput.addEventListener("change", handleFile);
   els.addSignature.addEventListener("click", addField);
   els.clearFields.addEventListener("click", () => {
     state.fields = [];
-    state.signatures = {};
+    state.selectedFieldId = "";
     renderAll();
   });
   els.generateLink.addEventListener("click", generateParentLink);
   els.copyLink.addEventListener("click", copyParentLink);
-  els.downloadTeacherImage.addEventListener("click", () => downloadDocument("teacher"));
-  els.downloadParentImage.addEventListener("click", () => downloadDocument("parent"));
+  els.downloadTeacherImage.addEventListener("click", () => downloadDocument("blank"));
+  els.downloadBlankPreview.addEventListener("click", () => downloadDocument("blank"));
   els.signatureSelect.addEventListener("change", () => {
     state.selectedFieldId = els.signatureSelect.value;
     renderParentFields();
   });
   els.clearSignature.addEventListener("click", clearSignaturePad);
   els.applySignature.addEventListener("click", applySignature);
+  els.downloadParentImage.addEventListener("click", downloadSignedDocument);
   bindSignaturePad();
 }
 
-function hydrateFromHash() {
-  if (!location.hash.startsWith("#parent=")) return;
+function syncTextInputs() {
+  state.title = els.docTitle.value.trim() || "未命名同意書";
+  state.text = els.docText.value.trim();
+}
+
+async function loadParentCase(caseId) {
+  setStatus(els.parentStatus, "正在讀取同意書...", "");
 
   try {
-    const encoded = location.hash.replace("#parent=", "");
-    const payload = JSON.parse(decodeURIComponent(escape(atob(encoded))));
-    Object.assign(state, payload);
-    els.docTitle.value = state.title || "";
-    els.docText.value = state.text || "";
-    els.driveLink.value = state.driveLink || "";
+    const response = await fetch(`/api/cases/${caseId}`);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.message || "簽名連結無法使用。");
+
+    state.caseId = payload.id;
+    state.title = payload.title;
+    state.text = payload.text || "";
+    state.fields = payload.fields || [];
+    state.selectedFieldId = state.fields[0]?.id || "";
+    state.file = payload.file;
+    els.docTitle.value = state.title;
+    els.docText.value = state.text;
+
+    await renderSourceFromState();
     setMode("parent");
-  } catch {
-    setMode("teacher");
+    setStatus(els.parentStatus, `連結有效至 ${formatTime(payload.expiresAt)}`, "success");
+  } catch (error) {
+    setMode("parent");
+    setStatus(els.parentStatus, error.message, "error");
   }
 }
 
-function syncFromInputs() {
-  state.title = els.docTitle.value.trim() || "未命名同意書";
-  state.text = els.docText.value;
-  state.driveLink = els.driveLink.value.trim();
-  renderAll();
-}
-
 function setMode(mode) {
+  state.mode = mode;
   const isTeacher = mode === "teacher";
   els.teacherTab.classList.toggle("active", isTeacher);
   els.parentTab.classList.toggle("active", !isTeacher);
   els.teacherView.classList.toggle("active", isTeacher);
   els.parentView.classList.toggle("active", !isTeacher);
-  if (!isTeacher && !state.selectedFieldId && state.fields[0]) {
-    state.selectedFieldId = state.fields[0].id;
-  }
   renderAll();
 }
 
-function handleFile(event) {
+async function handleFile(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = () => {
-    if (file.type.startsWith("image/")) {
-      state.image = reader.result;
-    } else {
-      state.text = String(reader.result || "");
-      els.docText.value = state.text;
-    }
-    renderAll();
+  if (file.size > MAX_UPLOAD_BYTES) {
+    setStatus(els.uploadStatus, "檔案超過 5MB，請壓縮後再上傳。", "error");
+    event.target.value = "";
+    return;
+  }
+
+  const isImage = file.type.startsWith("image/");
+  const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  if (!isImage && !isPdf) {
+    setStatus(els.uploadStatus, "第一版僅支援圖片與 PDF。", "error");
+    event.target.value = "";
+    return;
+  }
+
+  setStatus(els.uploadStatus, "正在載入檔案...", "");
+  const dataUrl = await readFileAsDataUrl(file);
+  state.file = {
+    name: file.name,
+    type: isPdf ? "application/pdf" : file.type,
+    size: file.size,
+    dataUrl,
   };
 
-  if (file.type.startsWith("image/")) {
-    reader.readAsDataURL(file);
-  } else {
-    reader.readAsText(file);
+  try {
+    await renderSourceFromState();
+    setStatus(els.uploadStatus, `${file.name} 已載入，大小 ${(file.size / 1024 / 1024).toFixed(2)}MB。`, "success");
+  } catch (error) {
+    state.file = null;
+    await drawTextSource();
+    setStatus(els.uploadStatus, error.message, "error");
   }
+
+  renderAll();
+}
+
+async function renderSourceFromState() {
+  if (!state.file) {
+    await drawTextSource();
+    return;
+  }
+
+  if (state.file.type === "application/pdf") {
+    await drawPdfSource(state.file.dataUrl);
+    return;
+  }
+
+  await drawImageSource(state.file.dataUrl);
+}
+
+async function drawImageSource(dataUrl) {
+  const image = await loadImage(dataUrl);
+  const maxWidth = 1200;
+  const ratio = image.naturalHeight / image.naturalWidth;
+  const width = Math.min(maxWidth, image.naturalWidth);
+  const height = Math.round(width * ratio);
+  setCanvasSize(state.sourceCanvas, width, height);
+  state.sourceCanvas.getContext("2d").drawImage(image, 0, 0, width, height);
+}
+
+async function drawPdfSource(dataUrl) {
+  if (!window.pdfjsLib) {
+    const pdf = await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs");
+    window.pdfjsLib = pdf;
+  }
+
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+  const documentTask = window.pdfjsLib.getDocument({ data: dataUrlToUint8Array(dataUrl) });
+  const pdf = await documentTask.promise;
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({ scale: 1.6 });
+  setCanvasSize(state.sourceCanvas, Math.round(viewport.width), Math.round(viewport.height));
+  await page.render({
+    canvasContext: state.sourceCanvas.getContext("2d"),
+    viewport,
+  }).promise;
+}
+
+async function drawTextSource() {
+  setCanvasSize(state.sourceCanvas, DEFAULT_DOC.width, DEFAULT_DOC.height);
+  const ctx = state.sourceCanvas.getContext("2d");
+  ctx.fillStyle = "#fffdf8";
+  ctx.fillRect(0, 0, DEFAULT_DOC.width, DEFAULT_DOC.height);
+  ctx.fillStyle = "#14212b";
+  ctx.textAlign = "center";
+  ctx.font = "700 34px sans-serif";
+  ctx.fillText(state.title, DEFAULT_DOC.width / 2, 100);
+  ctx.textAlign = "left";
+  ctx.font = "22px sans-serif";
+  wrapText(ctx, state.text, 74, 160, DEFAULT_DOC.width - 148, 38);
 }
 
 function addField() {
   const index = state.fields.length + 1;
-  state.fields.push({
+  const y = Math.min(84, 70 + state.fields.length * 9);
+  const field = {
     id: crypto.randomUUID(),
     label: `家長簽名 ${index}`,
     x: 56,
-    y: 72 + state.fields.length * 10,
+    y,
     w: 30,
-    h: 9,
-  });
-  state.selectedFieldId = state.fields.at(-1).id;
+    h: 8,
+  };
+  state.fields.push(field);
+  state.selectedFieldId = field.id;
   renderAll();
 }
 
+async function generateParentLink() {
+  syncTextInputs();
+  if (!state.fields.length) {
+    setStatus(els.caseStatus, "請至少新增一個簽名欄。", "error");
+    return;
+  }
+
+  els.generateLink.disabled = true;
+  setStatus(els.caseStatus, "正在暫存到伺服器/Google Drive...", "");
+
+  try {
+    const response = await fetch("/api/cases", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        title: state.title,
+        text: state.text,
+        file: state.file,
+        fields: state.fields,
+      }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.message || "建立家長連結失敗。");
+
+    const url = new URL(payload.parentUrl, location.origin);
+    els.parentLink.value = url.href;
+    setStatus(els.caseStatus, `已建立一位家長專用連結，有效至 ${formatTime(payload.expiresAt)}。`, "success");
+  } catch (error) {
+    setStatus(els.caseStatus, error.message, "error");
+  } finally {
+    els.generateLink.disabled = false;
+  }
+}
+
+async function copyParentLink() {
+  if (!els.parentLink.value) {
+    await generateParentLink();
+  }
+
+  if (!els.parentLink.value) return;
+  await navigator.clipboard.writeText(els.parentLink.value);
+  els.copyLink.textContent = "已複製";
+  setTimeout(() => {
+    els.copyLink.textContent = "複製連結";
+  }, 1200);
+}
+
 function renderAll() {
-  renderDocumentBase("teacher");
-  renderDocumentBase("parent");
+  renderDocumentCanvas(els.teacherCanvas);
+  renderDocumentCanvas(els.parentCanvas);
+  syncDocumentRatio(els.teacherDoc);
+  syncDocumentRatio(els.parentDoc);
   renderTeacherFields();
   renderParentFields();
   renderSignatureSelect();
 }
 
-function renderDocumentBase(target) {
-  const prefix = target === "teacher" ? "preview" : "parent";
-  const doc = target === "teacher" ? els.teacherDoc : els.parentDoc;
-  const image = target === "teacher" ? els.teacherImage : els.parentImage;
-
-  document.querySelector(`#${prefix}Title`).textContent = state.title;
-  document.querySelector(`#${prefix}Text`).textContent = state.text;
-  document.querySelector(`#${prefix}Drive`).textContent = state.driveLink
-    ? `Google Drive 原始檔：${state.driveLink}`
-    : "";
-
-  if (state.image) {
-    image.src = state.image;
-    doc.classList.add("has-image");
-    image.onload = () => syncImageDocumentHeight(doc, image);
-    syncImageDocumentHeight(doc, image);
-  } else {
-    image.removeAttribute("src");
-    doc.classList.remove("has-image");
-    doc.style.height = "";
-  }
+function renderDocumentCanvas(canvas) {
+  setCanvasSize(canvas, state.sourceCanvas.width || DEFAULT_DOC.width, state.sourceCanvas.height || DEFAULT_DOC.height);
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(state.sourceCanvas, 0, 0);
 }
 
-function syncImageDocumentHeight(doc, image) {
-  if (!image.naturalWidth) return;
-  doc.style.height = `${doc.clientWidth * (image.naturalHeight / image.naturalWidth)}px`;
+function syncDocumentRatio(doc) {
+  const width = state.sourceCanvas.width || DEFAULT_DOC.width;
+  const height = state.sourceCanvas.height || DEFAULT_DOC.height;
+  doc.style.aspectRatio = `${width} / ${height}`;
 }
 
 function renderTeacherFields() {
@@ -228,6 +368,7 @@ function createFieldNode(field, editable) {
 
   if (editable) {
     node.addEventListener("pointerdown", (event) => startFieldDrag(event, node, field));
+    node.addEventListener("pointerup", () => syncFieldSize(node, field));
     new ResizeObserver(() => syncFieldSize(node, field)).observe(node);
   }
 
@@ -267,8 +408,8 @@ function startFieldDrag(event, node, field) {
 function syncFieldSize(node, field) {
   const doc = els.teacherDoc.getBoundingClientRect();
   if (!doc.width || !doc.height) return;
-  field.w = clamp((node.offsetWidth / doc.width) * 100, 12, 85);
-  field.h = clamp((node.offsetHeight / doc.height) * 100, 5, 40);
+  field.w = clamp((node.offsetWidth / doc.width) * 100, 8, 90);
+  field.h = clamp((node.offsetHeight / doc.height) * 100, 4, 40);
 }
 
 function renderSignatureSelect() {
@@ -282,35 +423,11 @@ function renderSignatureSelect() {
   });
 }
 
-function generateParentLink() {
-  syncFromInputs();
-  const payload = {
-    title: state.title,
-    text: state.text,
-    driveLink: state.driveLink,
-    image: state.image,
-    fields: state.fields,
-    signatures: {},
-    selectedFieldId: state.fields[0]?.id || "",
-  };
-  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-  els.parentLink.value = `${location.origin}${location.pathname}#parent=${encoded}`;
-}
-
-async function copyParentLink() {
-  if (!els.parentLink.value) generateParentLink();
-  await navigator.clipboard.writeText(els.parentLink.value);
-  els.copyLink.textContent = "已複製";
-  setTimeout(() => {
-    els.copyLink.textContent = "複製連結";
-  }, 1200);
-}
-
 function bindSignaturePad() {
-  signatureContext.lineWidth = 3;
+  signatureContext.lineWidth = 4;
   signatureContext.lineCap = "round";
+  signatureContext.lineJoin = "round";
   signatureContext.strokeStyle = "#111820";
-  clearSignaturePad();
 
   els.signaturePad.addEventListener("pointerdown", (event) => {
     drawing = true;
@@ -347,53 +464,55 @@ function applySignature() {
   renderParentFields();
 }
 
-async function downloadDocument(mode) {
-  const canvas = await renderDocumentToCanvas(mode);
-  const link = document.createElement("a");
-  link.download = `${state.title || "同意書"}-${mode === "parent" ? "已簽名" : "預覽"}.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
-}
-
-async function renderDocumentToCanvas(mode) {
-  const source = mode === "teacher" ? els.teacherDoc : els.parentDoc;
-  const rect = source.getBoundingClientRect();
-  const scale = 2;
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(rect.width * scale);
-  canvas.height = Math.round(rect.height * scale);
-  const ctx = canvas.getContext("2d");
-  ctx.scale(scale, scale);
-  ctx.fillStyle = "#fffdf8";
-  ctx.fillRect(0, 0, rect.width, rect.height);
-
-  if (state.image) {
-    const image = await loadImage(state.image);
-    ctx.drawImage(image, 0, 0, rect.width, rect.height);
-  } else {
-    drawTextDocument(ctx, rect.width);
+async function downloadSignedDocument() {
+  if (!Object.keys(state.signatures).length) {
+    setStatus(els.parentStatus, "請先套用簽名。", "error");
+    return;
   }
 
+  const canvas = await composeDocumentCanvas("signed");
+  const dataUrl = canvas.toDataURL("image/png");
+  downloadDataUrl(dataUrl, `${state.title || "同意書"}-已簽名.png`);
+  els.completedImage.src = dataUrl;
+  els.completedImage.classList.add("active");
+  setStatus(els.parentStatus, "完成圖片已產生。若手機未自動下載，可長按下方圖片保存。", "success");
+
+  if (state.caseId) {
+    await fetch(`/api/cases/${state.caseId}/complete`, { method: "POST" }).catch(() => {});
+  }
+}
+
+async function downloadDocument(kind) {
+  const canvas = await composeDocumentCanvas(kind);
+  downloadDataUrl(canvas.toDataURL("image/png"), `${state.title || "同意書"}-空白簽名欄預覽.png`);
+}
+
+async function composeDocumentCanvas(kind) {
+  const canvas = document.createElement("canvas");
+  setCanvasSize(canvas, state.sourceCanvas.width, state.sourceCanvas.height);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(state.sourceCanvas, 0, 0);
+
   for (const field of state.fields) {
-    const x = (field.x / 100) * rect.width;
-    const y = (field.y / 100) * rect.height;
-    const w = (field.w / 100) * rect.width;
-    const h = (field.h / 100) * rect.height;
+    const x = (field.x / 100) * canvas.width;
+    const y = (field.y / 100) * canvas.height;
+    const w = (field.w / 100) * canvas.width;
+    const h = (field.h / 100) * canvas.height;
     const signature = state.signatures[field.id];
 
-    if (signature && mode === "parent") {
+    if (kind === "signed" && signature) {
       const image = await loadImage(signature);
-      ctx.drawImage(image, x + 6, y + 4, w - 12, h - 8);
+      ctx.drawImage(image, x + w * 0.04, y + h * 0.08, w * 0.92, h * 0.84);
     } else {
       ctx.strokeStyle = "#176b87";
-      ctx.setLineDash([7, 5]);
-      ctx.lineWidth = 2;
+      ctx.setLineDash([10, 8]);
+      ctx.lineWidth = Math.max(2, canvas.width * 0.003);
       ctx.strokeRect(x, y, w, h);
       ctx.setLineDash([]);
       ctx.fillStyle = "#0f5369";
-      ctx.font = "700 18px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
+      ctx.font = `700 ${Math.max(18, Math.round(canvas.width * 0.025))}px sans-serif`;
       ctx.fillText(field.label, x + w / 2, y + h / 2);
     }
   }
@@ -401,27 +520,53 @@ async function renderDocumentToCanvas(mode) {
   return canvas;
 }
 
-function drawTextDocument(ctx, width) {
-  ctx.fillStyle = "#14212b";
-  ctx.textAlign = "center";
-  ctx.font = "700 28px sans-serif";
-  ctx.fillText(state.title, width / 2, 92);
+function downloadDataUrl(dataUrl, filename) {
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = dataUrl;
+  link.click();
+}
 
-  ctx.textAlign = "left";
-  ctx.font = "18px sans-serif";
-  wrapText(ctx, state.text, 64, 140, width - 128, 32);
-  if (state.driveLink) {
-    ctx.fillStyle = "#66717c";
-    wrapText(ctx, `Google Drive 原始檔：${state.driveLink}`, 64, 930, width - 128, 28);
+function setCanvasSize(canvas, width, height) {
+  canvas.width = Math.max(1, Math.round(width));
+  canvas.height = Math.max(1, Math.round(height));
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("檔案讀取失敗。"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function dataUrlToUint8Array(dataUrl) {
+  const base64 = dataUrl.split(",")[1] || "";
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
   }
+  return bytes;
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("圖片載入失敗。"));
+    image.src = src;
+  });
 }
 
 function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-  const paragraphs = text.split("\n");
+  const paragraphs = (text || "").split("\n");
   let cursorY = y;
+
   paragraphs.forEach((paragraph) => {
     let line = "";
-    Array.from(paragraph).forEach((char) => {
+    Array.from(paragraph || " ").forEach((char) => {
       const testLine = line + char;
       if (ctx.measureText(testLine).width > maxWidth && line) {
         ctx.fillText(line, x, cursorY);
@@ -436,17 +581,21 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   });
 }
 
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = reject;
-    image.src = src;
-  });
+function setStatus(element, message, kind) {
+  element.textContent = message || "";
+  element.classList.toggle("error", kind === "error");
+  element.classList.toggle("success", kind === "success");
+}
+
+function formatTime(value) {
+  return new Intl.DateTimeFormat("zh-TW", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
-
-init();

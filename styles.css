@@ -55,8 +55,15 @@ button:hover {
   background: var(--accent-strong);
 }
 
+.primary:disabled,
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .full {
   width: 100%;
+  margin-bottom: 10px;
 }
 
 .topbar {
@@ -205,9 +212,24 @@ textarea {
 }
 
 .upload small,
-.hint {
+.hint,
+.status {
   color: var(--muted);
   line-height: 1.5;
+}
+
+.status {
+  min-height: 22px;
+  margin-bottom: 14px;
+  font-size: 0.9rem;
+}
+
+.status.error {
+  color: #a2352a;
+}
+
+.status.success {
+  color: #17633a;
 }
 
 .toolbar {
@@ -237,7 +259,7 @@ textarea {
 
 .document {
   width: min(100%, 860px);
-  min-height: 1080px;
+  aspect-ratio: 3 / 4;
   margin: 0 auto;
   position: relative;
   overflow: hidden;
@@ -246,22 +268,10 @@ textarea {
   box-shadow: var(--shadow);
 }
 
-.doc-image {
-  display: none;
-  width: 100%;
-  height: auto;
-}
-
-.document.has-image {
-  min-height: auto;
-}
-
-.document.has-image .doc-image {
+.doc-canvas {
   display: block;
-}
-
-.document.has-image .paper-text {
-  display: none;
+  width: 100%;
+  height: 100%;
 }
 
 .paper-text {
@@ -335,6 +345,18 @@ textarea {
   touch-action: none;
 }
 
+.completed-image {
+  display: none;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+.completed-image.active {
+  display: block;
+}
+
 @media (max-width: 900px) {
   .topbar {
     align-items: stretch;
@@ -364,6 +386,6 @@ textarea {
   }
 
   .document {
-    min-height: 820px;
+    width: 100%;
   }
 }
