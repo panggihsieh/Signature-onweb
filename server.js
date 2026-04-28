@@ -422,11 +422,8 @@ function loadDotEnv() {
 }
 
 function driveConfigured() {
-  return Boolean(
-    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
-      process.env.GOOGLE_PRIVATE_KEY &&
-      process.env.GOOGLE_DRIVE_TEMP_FOLDER_ID,
-  );
+  if (!process.env.GOOGLE_DRIVE_TEMP_FOLDER_ID) return false;
+  return getGoogleAuthMode() === "oauth" || getGoogleAuthMode() === "service_account";
 }
 
 async function uploadDriveFile({ name, type, buffer }) {
@@ -497,6 +494,54 @@ async function getDriveAccessToken() {
     return cachedToken.accessToken;
   }
 
+  if (getGoogleAuthMode() === "oauth") {
+    return getOAuthAccessToken();
+  }
+
+  return getServiceAccountAccessToken();
+}
+
+function getGoogleAuthMode() {
+  const explicitMode = String(process.env.GOOGLE_AUTH_MODE || "").toLowerCase();
+  const hasOAuth =
+    process.env.GOOGLE_OAUTH_CLIENT_ID &&
+    process.env.GOOGLE_OAUTH_CLIENT_SECRET &&
+    process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
+  const hasServiceAccount = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY;
+
+  if (explicitMode === "oauth") return hasOAuth ? "oauth" : "local";
+  if (explicitMode === "service_account") return hasServiceAccount ? "service_account" : "local";
+  if (hasOAuth) return "oauth";
+  if (hasServiceAccount) return "service_account";
+  return "local";
+}
+
+async function getOAuthAccessToken() {
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_OAUTH_CLIENT_ID,
+    client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+    refresh_token: process.env.GOOGLE_OAUTH_REFRESH_TOKEN,
+    grant_type: "refresh_token",
+  });
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: params,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google OAuth token request failed: ${response.status} ${await response.text()}`);
+  }
+
+  const token = await response.json();
+  cachedToken = {
+    accessToken: token.access_token,
+    expiresAt: Date.now() + token.expires_in * 1000,
+  };
+  return cachedToken.accessToken;
+}
+
+async function getServiceAccountAccessToken() {
   const now = Math.floor(Date.now() / 1000);
   const header = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const claim = base64Url(

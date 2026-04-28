@@ -128,6 +128,11 @@
 
 Google Drive 憑證完整設定時，檔案會寫入 `GOOGLE_DRIVE_TEMP_FOLDER_ID`。若本機開發未設定 Google Drive 環境變數，系統會改用 `.tmp/` 本機暫存，方便測試流程。
 
+Google Drive 寫入支援兩種模式：
+
+- `oauth`：建議給個人 Google Drive 使用。後端使用系統設計者的 OAuth refresh token 寫入指定 Drive 資料夾，老師與家長不需要登入。
+- `service_account`：適合 Google Workspace Shared Drive。一般個人 My Drive 可能會遇到 Service Account 沒有儲存空間額度的限制。
+
 ## 本機啟動
 
 ```bash
@@ -152,12 +157,42 @@ node --check app.js
 建議使用以下設定：
 
 ```text
+GOOGLE_AUTH_MODE=oauth
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GOOGLE_OAUTH_REFRESH_TOKEN=
+GOOGLE_OAUTH_REDIRECT_URI=http://localhost
 GOOGLE_SERVICE_ACCOUNT_EMAIL=
 GOOGLE_PRIVATE_KEY=
 GOOGLE_DRIVE_TEMP_FOLDER_ID=
 TEMP_CASE_TTL_HOURS=4
 MAX_UPLOAD_SIZE_MB=5
+PORT=3000
 ```
+
+公開 GitHub repo 時只提交 `.env.example`，不要提交 `.env`、OAuth secret、refresh token 或 Service Account private key。
+
+## 取得 OAuth Refresh Token
+
+方案 B 使用個人 Google Drive 時，需要先在 Google Cloud 建立 OAuth Client：
+
+1. 到 Google Cloud Console 的 APIs & Services > Credentials。
+2. 建立 OAuth client ID，類型選 Desktop app。
+3. 將 client ID 與 client secret 填入本機 `.env`。
+4. 執行：
+
+```bash
+node scripts/google-oauth-token.js
+```
+
+5. 打開工具輸出的授權網址，使用系統設計者的 Google 帳號授權。
+6. 授權後複製網址中的 `code`，再執行：
+
+```bash
+node scripts/google-oauth-token.js YOUR_CODE
+```
+
+7. 將輸出的 `GOOGLE_OAUTH_REFRESH_TOKEN` 填入本機 `.env` 或部署平台 Secrets。
 
 ## 驗收標準
 
