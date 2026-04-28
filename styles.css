@@ -311,12 +311,44 @@ textarea {
   pointer-events: auto;
   user-select: none;
   touch-action: none;
+  overflow: visible;
 }
 
 .teacher-doc .signature-field {
-  resize: both;
-  overflow: hidden;
   cursor: move;
+}
+
+.signature-label {
+  display: block;
+  max-width: calc(100% - 18px);
+  overflow: hidden;
+  padding: 0 8px;
+  pointer-events: none;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resize-handle {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--mark);
+  box-shadow: 0 2px 8px rgba(20, 33, 43, 0.24);
+  cursor: nwse-resize;
+  touch-action: none;
+}
+
+.resize-handle::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-right: 2px solid rgba(20, 33, 43, 0.55);
+  border-bottom: 2px solid rgba(20, 33, 43, 0.55);
 }
 
 .signature-field.selected {

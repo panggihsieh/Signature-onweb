@@ -241,11 +241,10 @@ async function drawTextSource() {
 }
 
 function addField() {
-  const index = state.fields.length + 1;
   const y = Math.min(84, 70 + state.fields.length * 9);
   const field = {
     id: crypto.randomUUID(),
-    label: `家長簽名 ${index}`,
+    label: "家長簽名",
     x: 56,
     y,
     w: 30,
@@ -359,24 +358,31 @@ function createFieldNode(field, editable) {
   const node = document.createElement("div");
   node.className = "signature-field";
   node.dataset.id = field.id;
-  node.textContent = field.label;
   node.style.left = `${field.x}%`;
   node.style.top = `${field.y}%`;
   node.style.width = `${field.w}%`;
   node.style.height = `${field.h}%`;
   node.classList.toggle("selected", field.id === state.selectedFieldId);
 
+  const label = document.createElement("span");
+  label.className = "signature-label";
+  label.textContent = field.label || "家長簽名";
+  node.appendChild(label);
+
   if (editable) {
     node.addEventListener("pointerdown", (event) => startFieldDrag(event, node, field));
-    node.addEventListener("pointerup", () => syncFieldSize(node, field));
-    new ResizeObserver(() => syncFieldSize(node, field)).observe(node);
+    const handle = document.createElement("span");
+    handle.className = "resize-handle";
+    handle.setAttribute("aria-hidden", "true");
+    handle.addEventListener("pointerdown", (event) => startFieldResize(event, node, field));
+    node.appendChild(handle);
   }
 
   return node;
 }
 
 function startFieldDrag(event, node, field) {
-  if (event.target !== node) return;
+  if (event.target.closest(".resize-handle")) return;
 
   state.selectedFieldId = field.id;
   const doc = els.teacherDoc.getBoundingClientRect();
@@ -405,11 +411,34 @@ function startFieldDrag(event, node, field) {
   }
 }
 
-function syncFieldSize(node, field) {
+function startFieldResize(event, node, field) {
+  event.stopPropagation();
+  event.preventDefault();
+  state.selectedFieldId = field.id;
+
   const doc = els.teacherDoc.getBoundingClientRect();
-  if (!doc.width || !doc.height) return;
-  field.w = clamp((node.offsetWidth / doc.width) * 100, 8, 90);
-  field.h = clamp((node.offsetHeight / doc.height) * 100, 4, 40);
+  const startX = event.clientX;
+  const startY = event.clientY;
+  const startWidth = field.w;
+  const startHeight = field.h;
+
+  node.setPointerCapture(event.pointerId);
+  node.addEventListener("pointermove", onMove);
+  node.addEventListener("pointerup", onUp, { once: true });
+
+  function onMove(moveEvent) {
+    const dw = ((moveEvent.clientX - startX) / doc.width) * 100;
+    const dh = ((moveEvent.clientY - startY) / doc.height) * 100;
+    field.w = clamp(startWidth + dw, 8, 100 - field.x);
+    field.h = clamp(startHeight + dh, 4, 100 - field.y);
+    node.style.width = `${field.w}%`;
+    node.style.height = `${field.h}%`;
+  }
+
+  function onUp() {
+    node.removeEventListener("pointermove", onMove);
+    renderAll();
+  }
 }
 
 function renderSignatureSelect() {
