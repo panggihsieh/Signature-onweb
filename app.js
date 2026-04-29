@@ -3,16 +3,16 @@ const DEFAULT_DOC = {
   width: 900,
   height: 1200,
 };
+const SHARE_LAYOUT_VERSION = 2;
 
 const state = {
   mode: "teacher",
-  caseId: "",
   title: "",
-  text: "",
   file: null,
   fields: [],
   signatures: {},
   selectedFieldId: "",
+  layoutSource: null,
   sourceCanvas: document.createElement("canvas"),
 };
 
@@ -22,6 +22,8 @@ const els = {
   teacherView: document.querySelector("#teacherView"),
   parentView: document.querySelector("#parentView"),
   fileInput: document.querySelector("#fileInput"),
+  parentFileInput: document.querySelector("#parentFileInput"),
+  pasteZone: document.querySelector("#pasteZone"),
   uploadStatus: document.querySelector("#uploadStatus"),
   caseStatus: document.querySelector("#caseStatus"),
   parentStatus: document.querySelector("#parentStatus"),
@@ -55,13 +57,23 @@ async function init() {
   bindEvents();
   clearSignaturePad();
 
-  const caseId = new URLSearchParams(location.search).get("case");
-  if (caseId) {
-    await loadParentCase(caseId);
+  const params = new URLSearchParams(location.search);
+  const legacyCaseId = params.get("case");
+  const layoutToken = params.get("layout");
+
+  if (layoutToken) {
+    loadSharedLayout(layoutToken);
     return;
   }
 
-  drawEmptySource();
+  if (legacyCaseId) {
+    setMode("parent");
+    drawPlaceholder("第二版不再使用第一版暫存連結", "請老師重新產生第二版排版連結，並把同意書原檔一起傳給家長。");
+    setStatus(els.parentStatus, "此連結屬於第一版流程，請改用第二版重新產生。", "error");
+    return;
+  }
+
+  drawPlaceholder("請先上傳圖片或 PDF 同意書", "上傳後可拖曳並縮放家長簽名欄");
   addField();
   setMode("teacher");
 }
@@ -69,7 +81,8 @@ async function init() {
 function bindEvents() {
   els.teacherTab.addEventListener("click", () => setMode("teacher"));
   els.parentTab.addEventListener("click", () => setMode("parent"));
-  els.fileInput.addEventListener("change", handleFile);
+  els.fileInput.addEventListener("change", (event) => handleFileInput(event, "teacher"));
+  els.parentFileInput.addEventListener("change", (event) => handleFileInput(event, "parent"));
   els.addSignature.addEventListener("click", addField);
   els.clearFields.addEventListener("click", () => {
     state.fields = [];
@@ -87,31 +100,16 @@ function bindEvents() {
   els.clearSignature.addEventListener("click", clearSignaturePad);
   els.applySignature.addEventListener("click", applySignature);
   els.downloadParentImage.addEventListener("click", downloadSignedDocument);
+  els.pasteZone.addEventListener("click", () => els.pasteZone.focus());
+  els.pasteZone.addEventListener("paste", handleParentPaste);
+  els.pasteZone.addEventListener("dragover", handlePasteZoneDragOver);
+  els.pasteZone.addEventListener("dragleave", () => els.pasteZone.classList.remove("active"));
+  els.pasteZone.addEventListener("drop", handleParentDrop);
+  window.addEventListener("paste", (event) => {
+    if (state.mode !== "parent" || event.defaultPrevented) return;
+    handleParentPaste(event);
+  });
   bindSignaturePad();
-}
-
-async function loadParentCase(caseId) {
-  setStatus(els.parentStatus, "正在讀取同意書...", "");
-
-  try {
-    const response = await fetch(`/api/cases/${caseId}`);
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.message || "簽名連結無法使用。");
-
-    state.caseId = payload.id;
-    state.title = payload.title;
-    state.text = payload.text || "";
-    state.fields = payload.fields || [];
-    state.selectedFieldId = state.fields[0]?.id || "";
-    state.file = payload.file;
-
-    await renderSourceFromState();
-    setMode("parent");
-    setStatus(els.parentStatus, `連結有效至 ${formatTime(payload.expiresAt)}`, "success");
-  } catch (error) {
-    setMode("parent");
-    setStatus(els.parentStatus, error.message, "error");
-  }
 }
 
 function setMode(mode) {
@@ -124,50 +122,67 @@ function setMode(mode) {
   renderAll();
 }
 
-async function handleFile(event) {
+async function handleFileInput(event, role) {
   const file = event.target.files[0];
   if (!file) return;
+  await loadSelectedFile(file, role);
+  event.target.value = "";
+}
+
+async function loadSelectedFile(file, role) {
+  const statusEl = role === "teacher" ? els.uploadStatus : els.parentStatus;
 
   if (file.size > MAX_UPLOAD_BYTES) {
-    setStatus(els.uploadStatus, "檔案超過 5MB，請壓縮後再上傳。", "error");
-    event.target.value = "";
+    setStatus(statusEl, "檔案超過 5MB，請壓縮後再上傳。", "error");
     return;
   }
 
   const isImage = file.type.startsWith("image/");
   const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
   if (!isImage && !isPdf) {
-    setStatus(els.uploadStatus, "第一版僅支援圖片與 PDF。", "error");
-    event.target.value = "";
+    setStatus(statusEl, "目前僅支援圖片與 PDF。", "error");
     return;
   }
 
-  setStatus(els.uploadStatus, "正在載入檔案...", "");
-  const dataUrl = await readFileAsDataUrl(file);
+  setStatus(statusEl, "正在載入檔案...", "");
+
+  try {
+    const dataUrl = await readFileAsDataUrl(file);
     state.file = {
       name: file.name,
       type: isPdf ? "application/pdf" : file.type,
       size: file.size,
       dataUrl,
     };
-    state.title = file.name.replace(/\.[^.]+$/, "") || "同意書";
-    state.text = "";
+    state.signatures = {};
+    if (role === "teacher") {
+      state.title = file.name.replace(/\.[^.]+$/, "") || "同意書";
+    }
 
-  try {
     await renderSourceFromState();
-    setStatus(els.uploadStatus, `${file.name} 已載入，大小 ${(file.size / 1024 / 1024).toFixed(2)}MB。`, "success");
+
+    if (role === "teacher") {
+      state.layoutSource = {
+        width: state.sourceCanvas.width,
+        height: state.sourceCanvas.height,
+      };
+      setStatus(statusEl, `${file.name} 已載入，現在可調整簽名欄位置。`, "success");
+    } else {
+      reportParentDocumentStatus(file.name);
+    }
+
+    renderAll();
   } catch (error) {
     state.file = null;
-    drawEmptySource();
-    setStatus(els.uploadStatus, error.message, "error");
+    drawPlaceholder("檔案載入失敗", "請重新選擇圖片或 PDF");
+    renderAll();
+    setStatus(statusEl, error.message, "error");
   }
-
-  renderAll();
 }
 
 async function renderSourceFromState() {
   if (!state.file) {
-    drawEmptySource();
+    drawPlaceholder("請先上傳同意書", "老師端用來排版，家長端用來簽名");
     return;
   }
 
@@ -208,7 +223,7 @@ async function drawPdfSource(dataUrl) {
   }).promise;
 }
 
-function drawEmptySource() {
+function drawPlaceholder(title, subtitle) {
   setCanvasSize(state.sourceCanvas, DEFAULT_DOC.width, DEFAULT_DOC.height);
   const ctx = state.sourceCanvas.getContext("2d");
   ctx.fillStyle = "#fffdf8";
@@ -216,10 +231,10 @@ function drawEmptySource() {
   ctx.fillStyle = "#14212b";
   ctx.textAlign = "center";
   ctx.font = "700 34px sans-serif";
-  ctx.fillText("請先上傳圖片或 PDF 同意書", DEFAULT_DOC.width / 2, DEFAULT_DOC.height / 2 - 20);
+  ctx.fillText(title, DEFAULT_DOC.width / 2, DEFAULT_DOC.height / 2 - 20);
   ctx.fillStyle = "#66717c";
   ctx.font = "22px sans-serif";
-  ctx.fillText("上傳後可拖曳並縮放家長簽名欄", DEFAULT_DOC.width / 2, DEFAULT_DOC.height / 2 + 28);
+  ctx.fillText(subtitle, DEFAULT_DOC.width / 2, DEFAULT_DOC.height / 2 + 28);
 }
 
 function addField() {
@@ -237,7 +252,7 @@ function addField() {
   renderAll();
 }
 
-async function generateParentLink() {
+function generateParentLink() {
   if (!state.file) {
     setStatus(els.caseStatus, "請先上傳圖片或 PDF 同意書。", "error");
     return;
@@ -248,35 +263,32 @@ async function generateParentLink() {
     return;
   }
 
-  els.generateLink.disabled = true;
-  setStatus(els.caseStatus, "正在暫存到伺服器/Google Drive...", "");
+  const sharePayload = {
+    version: SHARE_LAYOUT_VERSION,
+    title: state.title || "同意書",
+    source: {
+      width: state.sourceCanvas.width,
+      height: state.sourceCanvas.height,
+    },
+    fields: state.fields.map((field) => ({
+      id: field.id,
+      label: field.label,
+      x: roundShareNumber(field.x),
+      y: roundShareNumber(field.y),
+      w: roundShareNumber(field.w),
+      h: roundShareNumber(field.h),
+    })),
+  };
 
-  try {
-    const response = await fetch("/api/cases", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        title: state.title,
-        text: state.text,
-        file: state.file,
-        fields: state.fields,
-      }),
-    });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.message || "建立家長連結失敗。");
-
-    els.parentLink.value = payload.parentUrl;
-    setStatus(els.caseStatus, `已建立一位家長專用連結，有效至 ${formatTime(payload.expiresAt)}。`, "success");
-  } catch (error) {
-    setStatus(els.caseStatus, error.message, "error");
-  } finally {
-    els.generateLink.disabled = false;
-  }
+  const url = new URL("/index.html", location.origin);
+  url.searchParams.set("layout", encodeShareLayout(sharePayload));
+  els.parentLink.value = url.href;
+  setStatus(els.caseStatus, "已產生第二版家長連結。請把這個網址和同意書原檔一起傳給家長。", "success");
 }
 
 async function copyParentLink() {
   if (!els.parentLink.value) {
-    await generateParentLink();
+    generateParentLink();
   }
 
   if (!els.parentLink.value) return;
@@ -285,6 +297,46 @@ async function copyParentLink() {
   setTimeout(() => {
     els.copyLink.textContent = "複製連結";
   }, 1200);
+}
+
+function loadSharedLayout(layoutToken) {
+  try {
+    const layout = decodeShareLayout(layoutToken);
+    if (layout.version !== SHARE_LAYOUT_VERSION) {
+      throw new Error("排版連結版本不符，請老師重新產生。");
+    }
+
+    state.title = String(layout.title || "同意書");
+    state.fields = normalizeSharedFields(layout.fields);
+    state.selectedFieldId = state.fields[0]?.id || "";
+    state.layoutSource = layout.source || null;
+    state.file = null;
+    state.signatures = {};
+    drawPlaceholder("請貼上或上傳老師傳給你的同意書", "圖片可直接貼上，PDF 請改用上傳。");
+    setMode("parent");
+    renderAll();
+    setStatus(els.parentStatus, "排版連結已載入。請先貼上或上傳老師傳來的同意書，再進行簽名。", "success");
+  } catch (error) {
+    setMode("parent");
+    drawPlaceholder("排版連結無法讀取", "請老師重新產生第二版家長連結。");
+    renderAll();
+    setStatus(els.parentStatus, error.message, "error");
+  }
+}
+
+function normalizeSharedFields(fields) {
+  if (!Array.isArray(fields)) return [];
+  return fields
+    .map((field, index) => ({
+      id: typeof field.id === "string" && field.id ? field.id : `field-${index + 1}`,
+      label: typeof field.label === "string" && field.label ? field.label.slice(0, 40) : `家長簽名 ${index + 1}`,
+      x: clamp(Number(field.x) || 0, 0, 100),
+      y: clamp(Number(field.y) || 0, 0, 100),
+      w: clamp(Number(field.w) || 8, 8, 100),
+      h: clamp(Number(field.h) || 4, 4, 50),
+    }))
+    .filter((field) => field.w > 0 && field.h > 0)
+    .slice(0, 12);
 }
 
 function renderAll() {
@@ -391,7 +443,6 @@ function startFieldDrag(event, node, field) {
 
   function onUp() {
     node.removeEventListener("pointermove", onMove);
-    syncFieldSize(node, field);
     renderAll();
   }
 }
@@ -473,12 +524,27 @@ function clearSignaturePad() {
 }
 
 function applySignature() {
-  if (!state.selectedFieldId) return;
+  if (!state.selectedFieldId) {
+    setStatus(els.parentStatus, "目前沒有可簽名的欄位。", "error");
+    return;
+  }
+
+  if (!state.file) {
+    setStatus(els.parentStatus, "請先貼上或上傳老師傳來的同意書。", "error");
+    return;
+  }
+
   state.signatures[state.selectedFieldId] = els.signaturePad.toDataURL("image/png");
   renderParentFields();
+  setStatus(els.parentStatus, "簽名已套用到目前欄位。", "success");
 }
 
 async function downloadSignedDocument() {
+  if (!state.file) {
+    setStatus(els.parentStatus, "請先貼上或上傳老師傳來的同意書。", "error");
+    return;
+  }
+
   if (!Object.keys(state.signatures).length) {
     setStatus(els.parentStatus, "請先套用簽名。", "error");
     return;
@@ -490,13 +556,14 @@ async function downloadSignedDocument() {
   els.completedImage.src = dataUrl;
   els.completedImage.classList.add("active");
   setStatus(els.parentStatus, "完成圖片已產生。若手機未自動下載，可長按下方圖片保存。", "success");
-
-  if (state.caseId) {
-    await fetch(`/api/cases/${state.caseId}/complete`, { method: "POST" }).catch(() => {});
-  }
 }
 
 async function downloadDocument(kind) {
+  if (!state.file) {
+    setStatus(els.caseStatus, "請先上傳同意書，再下載預覽圖。", "error");
+    return;
+  }
+
   const canvas = await composeDocumentCanvas(kind);
   downloadDataUrl(canvas.toDataURL("image/png"), `${state.title || "同意書"}-空白簽名欄預覽.png`);
 }
@@ -534,6 +601,110 @@ async function composeDocumentCanvas(kind) {
   return canvas;
 }
 
+function handlePasteZoneDragOver(event) {
+  event.preventDefault();
+  els.pasteZone.classList.add("active");
+}
+
+async function handleParentDrop(event) {
+  event.preventDefault();
+  els.pasteZone.classList.remove("active");
+  const file = extractSupportedFile(event.dataTransfer);
+  if (!file) {
+    setStatus(els.parentStatus, "拖曳內容不是可用的圖片或 PDF。", "error");
+    return;
+  }
+  await loadSelectedFile(file, "parent");
+}
+
+async function handleParentPaste(event) {
+  const file = extractSupportedFile(event.clipboardData);
+  if (file) {
+    event.preventDefault();
+    await loadSelectedFile(file, "parent");
+    return;
+  }
+
+  const text = event.clipboardData?.getData("text/plain")?.trim();
+  if (text && text.startsWith("data:image/")) {
+    event.preventDefault();
+    await loadSelectedFile(dataUrlToFile(text, "pasted-image.png"), "parent");
+  }
+}
+
+function extractSupportedFile(dataTransfer) {
+  if (!dataTransfer) return null;
+
+  const directFile = Array.from(dataTransfer.files || []).find(isSupportedFile);
+  if (directFile) return directFile;
+
+  for (const item of Array.from(dataTransfer.items || [])) {
+    if (item.kind !== "file") continue;
+    const file = item.getAsFile();
+    if (file && isSupportedFile(file)) return file;
+  }
+
+  return null;
+}
+
+function isSupportedFile(file) {
+  const type = String(file.type || "");
+  const name = String(file.name || "").toLowerCase();
+  return type.startsWith("image/") || type === "application/pdf" || name.endsWith(".pdf");
+}
+
+function reportParentDocumentStatus(fileName) {
+  const layoutRatio = getLayoutRatio(state.layoutSource);
+  const docRatio = getLayoutRatio({
+    width: state.sourceCanvas.width,
+    height: state.sourceCanvas.height,
+  });
+
+  if (!layoutRatio || !docRatio) {
+    setStatus(els.parentStatus, `${fileName} 已載入，現在可點選簽名欄開始簽名。`, "success");
+    return;
+  }
+
+  const ratioDiff = Math.abs(layoutRatio - docRatio);
+  if (ratioDiff > 0.03) {
+    setStatus(
+      els.parentStatus,
+      `${fileName} 已載入，但版面比例和老師排版不同，簽名欄可能偏移。請改用老師傳來的原檔或同一張截圖。`,
+      "error",
+    );
+    return;
+  }
+
+  setStatus(els.parentStatus, `${fileName} 已載入，現在可點選簽名欄開始簽名。`, "success");
+}
+
+function getLayoutRatio(size) {
+  if (!size?.width || !size?.height) return 0;
+  return Number(size.width) / Number(size.height);
+}
+
+function encodeShareLayout(payload) {
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function decodeShareLayout(token) {
+  const normalized = token.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = "=".repeat((4 - (normalized.length % 4 || 4)) % 4);
+  const binary = atob(normalized + padding);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function roundShareNumber(value) {
+  return Math.round(Number(value) * 100) / 100;
+}
+
 function downloadDataUrl(dataUrl, filename) {
   const link = document.createElement("a");
   link.download = filename;
@@ -565,6 +736,22 @@ function dataUrlToUint8Array(dataUrl) {
   return bytes;
 }
 
+function dataUrlToFile(dataUrl, fallbackName) {
+  const [header, base64 = ""] = dataUrl.split(",");
+  const match = header.match(/^data:([^;]+);base64$/);
+  if (!match) {
+    throw new Error("貼上的資料不是可用圖片。");
+  }
+
+  const mimeType = match[1];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return new File([bytes], fallbackName, { type: mimeType });
+}
+
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const image = new Image();
@@ -574,40 +761,10 @@ function loadImage(src) {
   });
 }
 
-function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-  const paragraphs = (text || "").split("\n");
-  let cursorY = y;
-
-  paragraphs.forEach((paragraph) => {
-    let line = "";
-    Array.from(paragraph || " ").forEach((char) => {
-      const testLine = line + char;
-      if (ctx.measureText(testLine).width > maxWidth && line) {
-        ctx.fillText(line, x, cursorY);
-        line = char;
-        cursorY += lineHeight;
-      } else {
-        line = testLine;
-      }
-    });
-    ctx.fillText(line, x, cursorY);
-    cursorY += lineHeight;
-  });
-}
-
 function setStatus(element, message, kind) {
   element.textContent = message || "";
   element.classList.toggle("error", kind === "error");
   element.classList.toggle("success", kind === "success");
-}
-
-function formatTime(value) {
-  return new Intl.DateTimeFormat("zh-TW", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
 
 function clamp(value, min, max) {

@@ -218,6 +218,28 @@ textarea {
   line-height: 1.5;
 }
 
+.paste-zone {
+  margin: 0 0 14px;
+  padding: 14px;
+  border: 1px dashed #9eb0bd;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  text-align: center;
+  font-weight: 700;
+}
+
+.paste-zone:focus {
+  outline: 3px solid rgba(23, 107, 135, 0.2);
+  border-color: var(--accent);
+}
+
+.paste-zone.active {
+  border-color: var(--accent);
+  background: #eef8fb;
+  color: var(--accent-strong);
+}
+
 .status {
   min-height: 22px;
   margin-bottom: 14px;

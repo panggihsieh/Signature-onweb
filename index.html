@@ -49,6 +49,7 @@
             <span>3</span>
             <h2>送出給家長</h2>
           </div>
+          <p class="hint">第二版不再上傳後端。老師只需確認簽名欄位置，再把排版好的網址和同意書原檔一起傳給家長。</p>
           <button id="downloadBlankPreview" class="full" type="button">下載空白簽名欄預覽圖</button>
           <button id="generateLink" class="primary full" type="button">產生家長連結</button>
           <label class="field">
@@ -77,7 +78,16 @@
             <span>4</span>
             <h2>家長簽名</h2>
           </div>
-          <p class="hint">點選文件上的簽名欄後，在手寫板完成簽名，再下載完成圖片。</p>
+          <p class="hint">先把老師傳來的同意書貼上或上傳，再點選簽名欄完成手寫簽名並下載 PNG。</p>
+          <div class="field">
+            <span>同意書</span>
+            <label class="upload">
+              <input id="parentFileInput" type="file" accept="image/*,application/pdf,.pdf" />
+              <strong>上傳家長收到的同意書</strong>
+              <small>支援圖片與 PDF，也可點下面區塊後直接貼上圖片</small>
+            </label>
+          </div>
+          <div id="pasteZone" class="paste-zone" tabindex="0">點這裡後直接貼上同意書圖片</div>
           <label class="field">
             <span>簽名欄</span>
             <select id="signatureSelect"></select>
