@@ -51,6 +51,7 @@ const maxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB || 5);
 const maxUploadBytes = maxUploadSizeMb * 1024 * 1024;
 const ttlHours = Number(process.env.TEMP_CASE_TTL_HOURS || 4);
 const ttlMs = ttlHours * 60 * 60 * 1000;
+const publicBaseUrl = normalizeBaseUrl(process.env.PUBLIC_BASE_URL || process.env.RENDER_EXTERNAL_URL || "");
 
 await ensureStorage();
 setInterval(cleanExpiredCases, 15 * 60 * 1000).unref();
@@ -134,7 +135,7 @@ async function createCase(req, res) {
   sendJson(res, 201, {
     id,
     expiresAt,
-    parentUrl: `/index.html?case=${id}`,
+    parentUrl: buildParentUrl(req, id),
     storage: storedFile.storage,
   });
 }
@@ -328,6 +329,33 @@ async function getCase(id) {
 
 function casePath(id) {
   return join(caseRoot, `${id}.json`);
+}
+
+function buildParentUrl(req, id) {
+  return new URL(`/index.html?case=${id}`, getRequestOrigin(req)).href;
+}
+
+function getRequestOrigin(req) {
+  if (publicBaseUrl) return publicBaseUrl;
+
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim();
+  const forwardedHost = String(req.headers["x-forwarded-host"] || "").split(",")[0].trim();
+  const host = forwardedHost || String(req.headers.host || "").trim();
+  const protocol = forwardedProto || "http";
+
+  return `${protocol}://${host || `localhost:${port}`}`;
+}
+
+function normalizeBaseUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  try {
+    return new URL(raw).origin;
+  } catch {
+    console.warn(`Ignoring invalid PUBLIC_BASE_URL: ${raw}`);
+    return "";
+  }
 }
 
 function isExpired(record) {

@@ -265,8 +265,7 @@ async function generateParentLink() {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.message || "建立家長連結失敗。");
 
-    const url = new URL(payload.parentUrl, location.origin);
-    els.parentLink.value = url.href;
+    els.parentLink.value = payload.parentUrl;
     setStatus(els.caseStatus, `已建立一位家長專用連結，有效至 ${formatTime(payload.expiresAt)}。`, "success");
   } catch (error) {
     setStatus(els.caseStatus, error.message, "error");
