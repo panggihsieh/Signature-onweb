@@ -21,8 +21,6 @@ const els = {
   parentTab: document.querySelector("#parentTab"),
   teacherView: document.querySelector("#teacherView"),
   parentView: document.querySelector("#parentView"),
-  docTitle: document.querySelector("#docTitle"),
-  docText: document.querySelector("#docText"),
   fileInput: document.querySelector("#fileInput"),
   uploadStatus: document.querySelector("#uploadStatus"),
   caseStatus: document.querySelector("#caseStatus"),
@@ -55,7 +53,6 @@ init();
 
 async function init() {
   bindEvents();
-  syncTextInputs();
   clearSignaturePad();
 
   const caseId = new URLSearchParams(location.search).get("case");
@@ -64,7 +61,7 @@ async function init() {
     return;
   }
 
-  await drawTextSource();
+  drawEmptySource();
   addField();
   setMode("teacher");
 }
@@ -72,16 +69,6 @@ async function init() {
 function bindEvents() {
   els.teacherTab.addEventListener("click", () => setMode("teacher"));
   els.parentTab.addEventListener("click", () => setMode("parent"));
-  els.docTitle.addEventListener("input", async () => {
-    syncTextInputs();
-    if (!state.file) await drawTextSource();
-    renderAll();
-  });
-  els.docText.addEventListener("input", async () => {
-    syncTextInputs();
-    if (!state.file) await drawTextSource();
-    renderAll();
-  });
   els.fileInput.addEventListener("change", handleFile);
   els.addSignature.addEventListener("click", addField);
   els.clearFields.addEventListener("click", () => {
@@ -103,11 +90,6 @@ function bindEvents() {
   bindSignaturePad();
 }
 
-function syncTextInputs() {
-  state.title = els.docTitle.value.trim() || "未命名同意書";
-  state.text = els.docText.value.trim();
-}
-
 async function loadParentCase(caseId) {
   setStatus(els.parentStatus, "正在讀取同意書...", "");
 
@@ -122,8 +104,6 @@ async function loadParentCase(caseId) {
     state.fields = payload.fields || [];
     state.selectedFieldId = state.fields[0]?.id || "";
     state.file = payload.file;
-    els.docTitle.value = state.title;
-    els.docText.value = state.text;
 
     await renderSourceFromState();
     setMode("parent");
@@ -164,19 +144,21 @@ async function handleFile(event) {
 
   setStatus(els.uploadStatus, "正在載入檔案...", "");
   const dataUrl = await readFileAsDataUrl(file);
-  state.file = {
-    name: file.name,
-    type: isPdf ? "application/pdf" : file.type,
-    size: file.size,
-    dataUrl,
-  };
+    state.file = {
+      name: file.name,
+      type: isPdf ? "application/pdf" : file.type,
+      size: file.size,
+      dataUrl,
+    };
+    state.title = file.name.replace(/\.[^.]+$/, "") || "同意書";
+    state.text = "";
 
   try {
     await renderSourceFromState();
     setStatus(els.uploadStatus, `${file.name} 已載入，大小 ${(file.size / 1024 / 1024).toFixed(2)}MB。`, "success");
   } catch (error) {
     state.file = null;
-    await drawTextSource();
+    drawEmptySource();
     setStatus(els.uploadStatus, error.message, "error");
   }
 
@@ -185,7 +167,7 @@ async function handleFile(event) {
 
 async function renderSourceFromState() {
   if (!state.file) {
-    await drawTextSource();
+    drawEmptySource();
     return;
   }
 
@@ -226,7 +208,7 @@ async function drawPdfSource(dataUrl) {
   }).promise;
 }
 
-async function drawTextSource() {
+function drawEmptySource() {
   setCanvasSize(state.sourceCanvas, DEFAULT_DOC.width, DEFAULT_DOC.height);
   const ctx = state.sourceCanvas.getContext("2d");
   ctx.fillStyle = "#fffdf8";
@@ -234,10 +216,10 @@ async function drawTextSource() {
   ctx.fillStyle = "#14212b";
   ctx.textAlign = "center";
   ctx.font = "700 34px sans-serif";
-  ctx.fillText(state.title, DEFAULT_DOC.width / 2, 100);
-  ctx.textAlign = "left";
+  ctx.fillText("請先上傳圖片或 PDF 同意書", DEFAULT_DOC.width / 2, DEFAULT_DOC.height / 2 - 20);
+  ctx.fillStyle = "#66717c";
   ctx.font = "22px sans-serif";
-  wrapText(ctx, state.text, 74, 160, DEFAULT_DOC.width - 148, 38);
+  ctx.fillText("上傳後可拖曳並縮放家長簽名欄", DEFAULT_DOC.width / 2, DEFAULT_DOC.height / 2 + 28);
 }
 
 function addField() {
@@ -256,7 +238,11 @@ function addField() {
 }
 
 async function generateParentLink() {
-  syncTextInputs();
+  if (!state.file) {
+    setStatus(els.caseStatus, "請先上傳圖片或 PDF 同意書。", "error");
+    return;
+  }
+
   if (!state.fields.length) {
     setStatus(els.caseStatus, "請至少新增一個簽名欄。", "error");
     return;

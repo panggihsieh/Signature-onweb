@@ -109,8 +109,8 @@ async function createCase(req, res) {
     return;
   }
 
-  if (!file && !text) {
-    sendJson(res, 400, { error: "missing_document", message: "請上傳圖片/PDF，或貼上同意書內容。" });
+  if (!file) {
+    sendJson(res, 400, { error: "missing_document", message: "請上傳圖片或 PDF 同意書。" });
     return;
   }
 
@@ -135,7 +135,7 @@ async function createCase(req, res) {
     id,
     expiresAt,
     parentUrl: `/index.html?case=${id}`,
-    storage: storedFile?.storage || "text_only",
+    storage: storedFile.storage,
   });
 }
 

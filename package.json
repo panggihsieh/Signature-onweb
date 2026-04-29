@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js && node --check app.js && node --check scripts/google-oauth-token.js",
-    "oauth:url": "node scripts/google-oauth-token.js"
+    "oauth:url": "node scripts/google-oauth-token.js",
+    "package:windows": "powershell -ExecutionPolicy Bypass -File scripts/build-windows-exe.ps1"
   },
   "engines": {
     "node": ">=20"
