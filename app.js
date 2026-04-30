@@ -280,7 +280,7 @@ function generateParentLink() {
     })),
   };
 
-  const url = new URL("/index.html", location.origin);
+  const url = new URL("index.html", location.href);
   url.searchParams.set("layout", encodeShareLayout(sharePayload));
   els.parentLink.value = url.href;
   setStatus(els.caseStatus, "已產生第二版家長連結。請把這個網址和同意書原檔一起傳給家長。", "success");

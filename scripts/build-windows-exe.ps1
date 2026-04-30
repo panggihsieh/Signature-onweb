@@ -18,7 +18,6 @@ if (Test-Path $dist) {
 }
 
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
-New-Item -ItemType Directory -Force -Path (Join-Path $dist "scripts") | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $root "index.html") -Destination $dist
 Copy-Item -LiteralPath (Join-Path $root "app.js") -Destination $dist
@@ -27,7 +26,6 @@ Copy-Item -LiteralPath (Join-Path $root "server.js") -Destination $dist
 Copy-Item -LiteralPath (Join-Path $root "package.json") -Destination $dist
 Copy-Item -LiteralPath (Join-Path $root ".env.example") -Destination $dist
 Copy-Item -Path (Join-Path $root "*.md") -Destination $dist
-Copy-Item -LiteralPath (Join-Path $root "scripts\google-oauth-token.js") -Destination (Join-Path $dist "scripts")
 
 & $compiler /nologo /target:winexe /out:"$dist\Signature-onweb.exe" /reference:System.Windows.Forms.dll /reference:System.dll "$root\tools\SignatureOnwebLauncher.cs"
 

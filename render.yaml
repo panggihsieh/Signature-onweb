@@ -7,16 +7,6 @@ services:
     startCommand: "node server.js"
     autoDeploy: true
     envVars:
-      - key: GOOGLE_AUTH_MODE
-        value: oauth
-      - key: GOOGLE_OAUTH_CLIENT_ID
-        sync: false
-      - key: GOOGLE_OAUTH_CLIENT_SECRET
-        sync: false
-      - key: GOOGLE_OAUTH_REFRESH_TOKEN
-        sync: false
-      - key: GOOGLE_DRIVE_TEMP_FOLDER_ID
-        sync: false
       - key: PUBLIC_BASE_URL
         sync: false
       - key: TEMP_CASE_TTL_HOURS

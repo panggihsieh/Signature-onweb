@@ -308,12 +308,6 @@ textarea {
   font-size: 1.7rem;
 }
 
-.drive-note {
-  margin-top: 26px;
-  color: var(--muted);
-  word-break: break-all;
-}
-
 .field-layer {
   position: absolute;
   inset: 0;

@@ -19,26 +19,21 @@ namespace SignatureOnwebLauncher
 
             if (!File.Exists(serverPath))
             {
-                MessageBox.Show("找不到 server.js，請確認 exe 與專案檔案放在同一個資料夾。", "Signature-onweb");
+                MessageBox.Show("Cannot find server.js. Please keep the exe in the Signature-onweb package folder.", "Signature-onweb");
                 return;
-            }
-
-            if (!File.Exists(Path.Combine(appDir, ".env")))
-            {
-                MessageBox.Show("尚未找到 .env。將使用本機暫存模式啟動；若要寫入 Google Drive，請先設定 .env。", "Signature-onweb");
             }
 
             Process serverProcess = StartServer(appDir);
             if (serverProcess == null)
             {
-                MessageBox.Show("無法啟動 Node.js。請先安裝 Node.js 20 或更新版本。", "Signature-onweb");
+                MessageBox.Show("Cannot start Node.js. Please install Node.js 20 or newer.", "Signature-onweb");
                 return;
             }
 
             WaitForServer();
             Process.Start(new ProcessStartInfo(Url) { UseShellExecute = true });
 
-            MessageBox.Show("Signature-onweb 已啟動。\n\n關閉這個視窗後，本機服務也會停止。", "Signature-onweb");
+            MessageBox.Show("Signature-onweb is running locally.\n\nClose this message after you finish using the app.", "Signature-onweb");
 
             try
             {

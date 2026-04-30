@@ -65,6 +65,18 @@ node --check server.js
 node --check app.js
 ```
 
+## GitHub Pages 部署
+
+方案 1 使用純前端流程，可部署到 GitHub Pages：
+
+```text
+https://panggihsieh.github.io/Signature-onweb/
+```
+
+老師端產生的家長連結只包含簽名欄排版資訊，不包含同意書原檔。家長開啟連結後，仍需自行上傳或貼上老師提供的同一份同意書。
+
+本專案已提供 `.github/workflows/pages.yml`，推送到 `main` 後可由 GitHub Actions 發佈靜態網站。
+
 目前這個專案使用 Node.js 內建 HTTP server，不需要額外安裝 npm 套件。
 
 ## 遠端部署
@@ -91,7 +103,7 @@ PUBLIC_BASE_URL=
 PORT=3000
 ```
 
-`.env.example` 內仍保留第一版 Google 相關欄位，原因是未來若要回頭做混合模式或第三版擴充，可以沿用既有部署結構；但第二版流程本身不需要填那些值。
+`.env.example` 只保留第二版實際需要的設定；第二版不需要任何 Google Drive、OAuth 或 service account 欄位。
 
 ## 第二版驗收標準
 

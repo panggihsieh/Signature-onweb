@@ -1,4 +1,4 @@
-import { createHash, createSign, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { createReadStream, readFileSync } from "node:fs";
 import {
   mkdir,
@@ -189,22 +189,6 @@ async function storeFile(caseId, file) {
   const buffer = Buffer.from(file.base64, "base64");
   const checksum = createHash("sha256").update(buffer).digest("hex");
 
-  if (driveConfigured()) {
-    const driveFile = await uploadDriveFile({
-      name: `${caseId}-${file.name}`,
-      type: file.type,
-      buffer,
-    });
-    return {
-      storage: "google_drive",
-      driveFileId: driveFile.id,
-      name: file.name,
-      type: file.type,
-      size: buffer.length,
-      checksum,
-    };
-  }
-
   const localName = `${caseId}${file.type === "application/pdf" ? ".pdf" : ".bin"}`;
   await writeFile(join(fileRoot, localName), buffer);
   return {
@@ -218,24 +202,12 @@ async function storeFile(caseId, file) {
 }
 
 async function readStoredFile(file) {
-  let buffer;
-
-  if (file.storage === "google_drive") {
-    buffer = await downloadDriveFile(file.driveFileId);
-  } else {
-    buffer = await readFile(join(fileRoot, file.localName));
-  }
+  const buffer = await readFile(join(fileRoot, file.localName));
 
   return `data:${file.type};base64,${buffer.toString("base64")}`;
 }
 
 async function deleteCase(record) {
-  if (record.file?.storage === "google_drive") {
-    await deleteDriveFile(record.file.driveFileId).catch((error) => {
-      console.error(`Drive delete failed for ${record.file.driveFileId}`, error);
-    });
-  }
-
   if (record.file?.storage === "local_temp") {
     await rm(join(fileRoot, record.file.localName), { force: true }).catch(() => {});
   }
@@ -447,167 +419,4 @@ function loadDotEnv() {
   } catch {
     // .env is optional.
   }
-}
-
-function driveConfigured() {
-  if (!process.env.GOOGLE_DRIVE_TEMP_FOLDER_ID) return false;
-  return getGoogleAuthMode() === "oauth" || getGoogleAuthMode() === "service_account";
-}
-
-async function uploadDriveFile({ name, type, buffer }) {
-  const token = await getDriveAccessToken();
-  const boundary = `signature_onweb_${randomBytes(8).toString("hex")}`;
-  const metadata = {
-    name,
-    parents: [process.env.GOOGLE_DRIVE_TEMP_FOLDER_ID],
-  };
-  const body = Buffer.concat([
-    Buffer.from(
-      `--${boundary}\r\ncontent-type: application/json; charset=utf-8\r\n\r\n${JSON.stringify(metadata)}\r\n`,
-    ),
-    Buffer.from(`--${boundary}\r\ncontent-type: ${type}\r\n\r\n`),
-    buffer,
-    Buffer.from(`\r\n--${boundary}--`),
-  ]);
-
-  const response = await fetch(
-    "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType",
-    {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${token}`,
-        "content-type": `multipart/related; boundary=${boundary}`,
-        "content-length": String(body.length),
-      },
-      body,
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(`Google Drive upload failed: ${response.status} ${await response.text()}`);
-  }
-
-  return response.json();
-}
-
-async function downloadDriveFile(fileId) {
-  const token = await getDriveAccessToken();
-  const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-    headers: { authorization: `Bearer ${token}` },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Google Drive download failed: ${response.status} ${await response.text()}`);
-  }
-
-  return Buffer.from(await response.arrayBuffer());
-}
-
-async function deleteDriveFile(fileId) {
-  const token = await getDriveAccessToken();
-  const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-    method: "DELETE",
-    headers: { authorization: `Bearer ${token}` },
-  });
-
-  if (!response.ok && response.status !== 404) {
-    throw new Error(`Google Drive delete failed: ${response.status} ${await response.text()}`);
-  }
-}
-
-let cachedToken = null;
-
-async function getDriveAccessToken() {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
-    return cachedToken.accessToken;
-  }
-
-  if (getGoogleAuthMode() === "oauth") {
-    return getOAuthAccessToken();
-  }
-
-  return getServiceAccountAccessToken();
-}
-
-function getGoogleAuthMode() {
-  const explicitMode = String(process.env.GOOGLE_AUTH_MODE || "").toLowerCase();
-  const hasOAuth =
-    process.env.GOOGLE_OAUTH_CLIENT_ID &&
-    process.env.GOOGLE_OAUTH_CLIENT_SECRET &&
-    process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
-  const hasServiceAccount = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY;
-
-  if (explicitMode === "oauth") return hasOAuth ? "oauth" : "local";
-  if (explicitMode === "service_account") return hasServiceAccount ? "service_account" : "local";
-  if (hasOAuth) return "oauth";
-  if (hasServiceAccount) return "service_account";
-  return "local";
-}
-
-async function getOAuthAccessToken() {
-  const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_OAUTH_CLIENT_ID,
-    client_secret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-    refresh_token: process.env.GOOGLE_OAUTH_REFRESH_TOKEN,
-    grant_type: "refresh_token",
-  });
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: params,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Google OAuth token request failed: ${response.status} ${await response.text()}`);
-  }
-
-  const token = await response.json();
-  cachedToken = {
-    accessToken: token.access_token,
-    expiresAt: Date.now() + token.expires_in * 1000,
-  };
-  return cachedToken.accessToken;
-}
-
-async function getServiceAccountAccessToken() {
-  const now = Math.floor(Date.now() / 1000);
-  const header = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
-  const claim = base64Url(
-    JSON.stringify({
-      iss: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      scope: "https://www.googleapis.com/auth/drive.file",
-      aud: "https://oauth2.googleapis.com/token",
-      iat: now,
-      exp: now + 3600,
-    }),
-  );
-  const unsigned = `${header}.${claim}`;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
-  const signature = createSign("RSA-SHA256").update(unsigned).sign(privateKey);
-  const assertion = `${unsigned}.${base64Url(signature)}`;
-  const params = new URLSearchParams({
-    grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-    assertion,
-  });
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: params,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Google token request failed: ${response.status} ${await response.text()}`);
-  }
-
-  const token = await response.json();
-  cachedToken = {
-    accessToken: token.access_token,
-    expiresAt: Date.now() + token.expires_in * 1000,
-  };
-  return cachedToken.accessToken;
-}
-
-function base64Url(value) {
-  const buffer = Buffer.isBuffer(value) ? value : Buffer.from(value);
-  return buffer.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
