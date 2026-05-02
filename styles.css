@@ -304,6 +304,17 @@ textarea {
   color: var(--accent-strong);
 }
 
+.upload-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.upload-actions button {
+  width: 100%;
+}
+
 .paste-zone:focus {
   outline: 3px solid rgba(23, 107, 135, 0.2);
   border-color: var(--accent);

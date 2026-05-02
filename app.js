@@ -26,6 +26,10 @@ const els = {
   parentFileInput: document.querySelector("#parentFileInput"),
   teacherPasteZone: document.querySelector("#teacherPasteZone"),
   pasteZone: document.querySelector("#pasteZone"),
+  teacherUploadBtn: document.querySelector("#teacherUploadBtn"),
+  teacherPasteBtn: document.querySelector("#teacherPasteBtn"),
+  parentUploadBtn: document.querySelector("#parentUploadBtn"),
+  parentPasteBtn: document.querySelector("#parentPasteBtn"),
   uploadStatus: document.querySelector("#uploadStatus"),
   caseStatus: document.querySelector("#caseStatus"),
   parentStatus: document.querySelector("#parentStatus"),
@@ -104,6 +108,8 @@ function bindEvents() {
   els.teacherPasteZone?.addEventListener("dragover", (event) => handlePasteZoneDragOver(event, els.teacherPasteZone));
   els.teacherPasteZone?.addEventListener("dragleave", () => els.teacherPasteZone.classList.remove("active"));
   els.teacherPasteZone?.addEventListener("drop", (event) => handleDocumentDrop(event, "teacher", els.teacherPasteZone));
+  els.teacherUploadBtn?.addEventListener("click", () => els.fileInput?.click());
+  els.teacherPasteBtn?.addEventListener("click", () => requestPasteForRole("teacher"));
   els.addSignature?.addEventListener("click", addField);
   els.clearFields?.addEventListener("click", () => {
     state.fields = [];
@@ -125,6 +131,8 @@ function bindEvents() {
   els.pasteZone?.addEventListener("dragover", (event) => handlePasteZoneDragOver(event, els.pasteZone));
   els.pasteZone?.addEventListener("dragleave", () => els.pasteZone.classList.remove("active"));
   els.pasteZone?.addEventListener("drop", (event) => handleDocumentDrop(event, "parent", els.pasteZone));
+  els.parentUploadBtn?.addEventListener("click", () => els.parentFileInput?.click());
+  els.parentPasteBtn?.addEventListener("click", () => requestPasteForRole("parent"));
   window.addEventListener("paste", (event) => {
     if (event.defaultPrevented) return;
     if (pageMode === "teacher" && state.mode === "teacher") {
@@ -137,6 +145,11 @@ function bindEvents() {
   });
   bindSignaturePad();
 }
+
+const pasteHelpers = {
+  teacher: null,
+  parent: null,
+};
 
 function prepareContextPasteZone(zone) {
   if (!zone) return;
@@ -152,6 +165,7 @@ function prepareContextPasteZone(zone) {
   helper.style.left = "-9999px";
   helper.style.top = "-9999px";
   document.body.appendChild(helper);
+  pasteHelpers[role] = helper;
 
   zone.addEventListener("contextmenu", (event) => {
     helper.style.left = `${event.clientX}px`;
@@ -195,6 +209,40 @@ function prepareContextPasteZone(zone) {
     helper.style.left = "-9999px";
     helper.style.top = "-9999px";
   });
+}
+
+async function requestPasteForRole(role) {
+  const statusEl = role === "teacher" ? els.uploadStatus : els.parentStatus;
+  const helper = pasteHelpers[role];
+
+  if (navigator.clipboard?.read) {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imageType = item.types.find((type) => type.startsWith("image/"));
+        if (!imageType) continue;
+        const blob = await item.getType(imageType);
+        const file = new File([blob], "clipboard-image.png", { type: blob.type || imageType });
+        await loadSelectedFile(file, role);
+        return;
+      }
+      setStatus(statusEl, "剪貼簿沒有圖片，請先複製題圖。", "error");
+      return;
+    } catch {
+      // Fall back to manual paste target below.
+    }
+  }
+
+  if (helper) {
+    helper.style.left = "20px";
+    helper.style.top = "20px";
+    helper.focus();
+    helper.select();
+    setStatus(statusEl, "請按 Ctrl+V 或滑鼠右鍵貼上題圖。", "success");
+    return;
+  }
+
+  setStatus(statusEl, "目前無法貼上，請改用上傳題圖。", "error");
 }
 
 function setMode(mode) {
