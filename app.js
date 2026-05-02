@@ -77,11 +77,6 @@ async function init() {
 
   if (layoutToken) {
     loadSharedLayout(layoutToken);
-    if (state.watchMode) {
-      disableParentEditingForWatch();
-      initParentWatchMode();
-      return;
-    }
     reportSigningEvent("opened");
     return;
   }
@@ -425,7 +420,6 @@ async function prepareSigningSession() {
 function openParentWatchTab(parentLink, watchWindow) {
   try {
     const url = new URL(parentLink);
-    url.searchParams.set("watch", "1");
     if (watchWindow && !watchWindow.closed) {
       watchWindow.location.href = url.href;
       return;
@@ -806,7 +800,6 @@ function clearSignaturePad() {
 }
 
 function applySignature() {
-  if (state.watchMode) return;
   if (!state.selectedFieldId) {
     setStatus(els.parentStatus, "目前沒有可簽名的欄位。", "error");
     return;
