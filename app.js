@@ -342,9 +342,10 @@ async function generateParentLink() {
 
 async function copyParentLink() {
   const watchWindow = window.open("about:blank", "_blank");
+  renderWatchLoadingPage(watchWindow);
   const link = els.parentLink.value || await generateParentLink();
   if (!link) {
-    watchWindow?.close();
+    renderWatchFailedPage(watchWindow);
     return;
   }
 
@@ -407,12 +408,49 @@ function openParentWatchTab(parentLink, watchWindow) {
     const url = new URL(parentLink);
     url.searchParams.set("watch", "1");
     if (watchWindow && !watchWindow.closed) {
-      watchWindow.location.replace(url.href);
+      watchWindow.location.href = url.href;
       return;
     }
     window.open(url.href, "_blank");
   } catch {
-    watchWindow?.close();
+    renderWatchLinkFallbackPage(watchWindow, parentLink);
+    // ignore
+  }
+}
+
+function renderWatchLoadingPage(watchWindow) {
+  if (!watchWindow || watchWindow.closed) return;
+  try {
+    watchWindow.document.write(
+      "<!doctype html><meta charset='utf-8'><title>載入中</title><body style='font-family:sans-serif;padding:24px;line-height:1.7'>正在開啟家長端分頁，請稍候…</body>",
+    );
+    watchWindow.document.close();
+  } catch {
+    // ignore
+  }
+}
+
+function renderWatchFailedPage(watchWindow) {
+  if (!watchWindow || watchWindow.closed) return;
+  try {
+    watchWindow.document.write(
+      "<!doctype html><meta charset='utf-8'><title>開啟失敗</title><body style='font-family:sans-serif;padding:24px;line-height:1.7'>無法產生家長端連結，請回到老師頁面重新操作。</body>",
+    );
+    watchWindow.document.close();
+  } catch {
+    // ignore
+  }
+}
+
+function renderWatchLinkFallbackPage(watchWindow, parentLink) {
+  if (!watchWindow || watchWindow.closed) return;
+  try {
+    const safeUrl = String(parentLink || "").replace(/"/g, "&quot;");
+    watchWindow.document.write(
+      `<!doctype html><meta charset='utf-8'><title>點擊開啟</title><body style='font-family:sans-serif;padding:24px;line-height:1.7'>自動開啟失敗，請點下方連結：<br><a href="${safeUrl}" target="_self" rel="noopener">開啟家長端分頁</a></body>`,
+    );
+    watchWindow.document.close();
+  } catch {
     // ignore
   }
 }
