@@ -15,26 +15,36 @@
     </header>
 
     <main>
-      <section id="parentView" class="workspace active" aria-label="家長端">
+      <section id="parentView" class="workspace active" aria-label="家長端簽名">
         <aside class="panel compact">
           <div class="section-title">
             <span>1</span>
             <h2>貼上同意書</h2>
           </div>
-          <p class="hint">收到老師分享的連結後，先複製老師傳來的同意書圖片，再回到本頁直接貼上即可開始簽名。</p>
+          <p class="hint">請先上傳或貼上老師提供的同意書原稿，再進行簽名。</p>
           <div id="pasteZone" class="paste-zone paste-zone-large" tabindex="0">點這裡後按 Ctrl+V 貼上同意書圖片</div>
           <div class="field">
-            <span>或改用上傳檔案</span>
+            <span>或選擇檔案</span>
             <label class="upload">
               <input id="parentFileInput" type="file" accept="image/*,application/pdf,.pdf" />
               <strong>選擇圖片或 PDF</strong>
-              <small>需使用老師提供的原檔，版面比例一致時簽名欄才會對齊。</small>
+              <small>上傳後會顯示於下方預覽，並套用老師端的簽名欄位。</small>
             </label>
           </div>
 
+          <section class="document-shell">
+            <div class="doc-actions">
+              <p>家長端預覽</p>
+            </div>
+            <div id="parentDoc" class="document">
+              <canvas id="parentCanvas" class="doc-canvas"></canvas>
+              <div id="parentFieldLayer" class="field-layer"></div>
+            </div>
+          </section>
+
           <div class="section-title">
             <span>2</span>
-            <h2>手寫簽名</h2>
+            <h2>填寫簽名</h2>
           </div>
           <label class="field">
             <span>簽名欄位</span>
@@ -50,25 +60,15 @@
 
           <div class="section-title">
             <span>3</span>
-            <h2>下載完成圖</h2>
+            <h2>下載已簽名</h2>
           </div>
           <div class="share-actions">
             <button id="downloadParentImage" class="primary" type="button">下載已簽名 PNG</button>
-            <button id="shareParentImage" type="button">分享給通訊軟體</button>
+            <button id="shareParentImage" type="button">分享到通訊軟體</button>
           </div>
           <p id="parentStatus" class="status"></p>
-          <img id="completedImage" class="completed-image" alt="已簽名同意書預覽" />
+          <img id="completedImage" class="completed-image" alt="已簽名完成預覽" />
         </aside>
-
-        <section class="document-shell">
-          <div class="doc-actions">
-            <p>家長端預覽</p>
-          </div>
-          <div id="parentDoc" class="document">
-            <canvas id="parentCanvas" class="doc-canvas"></canvas>
-            <div id="parentFieldLayer" class="field-layer"></div>
-          </div>
-        </section>
       </section>
     </main>
 

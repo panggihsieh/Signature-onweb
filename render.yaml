@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: signature-onweb
+    name: sign
     env: node
     plan: free
     buildCommand: ""
