@@ -50,10 +50,7 @@
             <h2>分享給家長</h2>
           </div>
           <p class="hint">確認簽名欄位置後，請把產生的家長連結與同意書原檔一起傳給家長。</p>
-          <form id="monitorForm" class="monitor-form" action="monitor.html" method="get" target="_blank">
-            <input id="monitorInput" type="hidden" name="monitor" />
-            <button id="copyLink" class="primary full" type="submit">複製家長端分享連結</button>
-          </form>
+          <button id="copyLink" class="primary full" type="button">複製家長端分享連結</button>
           <textarea id="parentLink" class="visually-hidden" rows="1" readonly tabindex="-1"></textarea>
           <div id="qrPanel" class="qr-panel" hidden>
             <div id="qrCode" class="qr-code" aria-label="家長端連結 QR code"></div>

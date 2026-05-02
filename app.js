@@ -14,6 +14,8 @@ const state = {
   selectedFieldId: "",
   layoutSource: null,
   monitorId: "",
+  watchMode: false,
+  lastWatchPreview: "",
   sourceCanvas: document.createElement("canvas"),
 };
 
@@ -36,8 +38,6 @@ const els = {
   addSignature: document.querySelector("#addSignature"),
   clearFields: document.querySelector("#clearFields"),
   parentLink: document.querySelector("#parentLink"),
-  monitorForm: document.querySelector("#monitorForm"),
-  monitorInput: document.querySelector("#monitorInput"),
   copyLink: document.querySelector("#copyLink"),
   qrPanel: document.querySelector("#qrPanel"),
   qrCode: document.querySelector("#qrCode"),
@@ -73,9 +73,15 @@ async function init() {
   const params = new URLSearchParams(location.search);
   const layoutToken = params.get("layout");
   state.monitorId = params.get("monitor") || "";
+  state.watchMode = params.get("watch") === "1";
 
   if (layoutToken) {
     loadSharedLayout(layoutToken);
+    if (state.watchMode) {
+      disableParentEditingForWatch();
+      initParentWatchMode();
+      return;
+    }
     reportSigningEvent("opened");
     return;
   }
@@ -106,7 +112,7 @@ function bindEvents() {
     state.selectedFieldId = "";
     renderAll();
   });
-  els.monitorForm?.addEventListener("submit", copyParentLink);
+  els.copyLink?.addEventListener("click", copyParentLink);
   els.downloadQrCode?.addEventListener("click", downloadQrCode);
   els.signatureSelect?.addEventListener("change", () => {
     state.selectedFieldId = els.signatureSelect.value;
@@ -292,7 +298,7 @@ function addField() {
   renderAll();
 }
 
-async function generateParentLink(monitorWindow = null) {
+async function generateParentLink() {
   if (!state.fields.length) {
     setStatus(els.caseStatus, "請至少新增一個簽名欄。", "error");
     return "";
@@ -317,7 +323,7 @@ async function generateParentLink(monitorWindow = null) {
 
   const url = new URL("parent.html", location.href);
   url.searchParams.set("layout", encodeShareLayout(sharePayload));
-  const monitorId = await ensureSigningSession(monitorWindow);
+  const monitorId = await ensureSigningSession();
   if (monitorId) {
     url.searchParams.set("monitor", monitorId);
   }
@@ -334,20 +340,19 @@ async function generateParentLink(monitorWindow = null) {
   return url.href;
 }
 
-async function copyParentLink(event) {
-  if (!state.monitorId) {
-    event?.preventDefault();
-  }
-
+async function copyParentLink() {
+  const watchWindow = window.open("", "_blank");
   const link = els.parentLink.value || await generateParentLink();
-  if (!link) return;
+  if (!link) {
+    watchWindow?.close();
+    return;
+  }
 
   const monitorId = state.monitorId || getMonitorIdFromLink(link);
   if (monitorId) {
-    updateMonitorLinkTarget(monitorId);
-    if (event?.defaultPrevented) {
-      els.monitorForm?.requestSubmit();
-    }
+    openParentWatchTab(link, watchWindow);
+  } else {
+    watchWindow?.close();
   }
 
   const copied = copyTextToClipboard(link);
@@ -367,10 +372,8 @@ async function copyParentLink(event) {
   setStatus(els.caseStatus, "瀏覽器未允許自動複製，已選取家長端連結，請按 Ctrl+C 複製。QR Code 已保留在下方。", "error");
 }
 
-async function ensureSigningSession(monitorWindow = null) {
-  if (state.monitorId) {
-    openMonitorWindow(state.monitorId, monitorWindow);
-    return state.monitorId;
+async function ensureSigningSession() {
+  if (state.monitorId) {    return state.monitorId;
   }
 
   try {
@@ -381,30 +384,14 @@ async function ensureSigningSession(monitorWindow = null) {
     });
     if (!response.ok) throw new Error("monitor_unavailable");
     const session = await response.json();
-    state.monitorId = session.id;
-    openMonitorWindow(session.id, monitorWindow);
-    return session.id;
-  } catch {
-    monitorWindow?.close?.();
-    setStatus(els.caseStatus, "分享連結已產生，但目前無法建立即時監控頁。請確認本機服務已啟動。", "error");
+    state.monitorId = session.id;    return session.id;
+  } catch {    setStatus(els.caseStatus, "分享連結已產生，但目前無法建立即時監控頁。請確認本機服務已啟動。", "error");
     return "";
   }
 }
 
-function openPendingMonitorWindow() {
-  try {
-    return window.open("monitor.html", "_blank");
-  } catch {
-    return null;
-  }
-}
-
 async function prepareSigningSession() {
-  if (pageMode !== "teacher") return;
-  if (state.monitorId) {
-    updateMonitorLinkTarget(state.monitorId);
-    return;
-  }
+  if (pageMode !== "teacher") return;  if (state.monitorId) return;
 
   try {
     const response = await fetch("/api/signing-sessions", {
@@ -415,32 +402,22 @@ async function prepareSigningSession() {
     if (!response.ok) return;
     const session = await response.json();
     state.monitorId = session.id;
-    updateMonitorLinkTarget(session.id);
   } catch {
     // The share action will show a user-facing error if monitoring is still unavailable.
   }
 }
 
-function openMonitorWindow(monitorId, monitorWindow = null) {
-  const url = new URL("monitor.html", location.href);
-  url.searchParams.set("monitor", monitorId);
-  if (monitorWindow && !monitorWindow.closed) {
-    monitorWindow.location.href = url.href;
-    monitorWindow.focus?.();
-    return true;
-  }
-  return Boolean(window.open(url.href, "_blank"));
-}
-
-function updateMonitorLinkTarget(monitorId) {
-  if (!monitorId) return;
-  const url = new URL("monitor.html", location.href);
-  url.searchParams.set("monitor", monitorId);
-  if (els.monitorInput) {
-    els.monitorInput.value = monitorId;
-  }
-  if (els.copyLink) {
-    els.copyLink.dataset.monitorUrl = url.href;
+function openParentWatchTab(parentLink, openedWindow) {
+  try {
+    const url = new URL(parentLink);
+    url.searchParams.set("watch", "1");
+    if (openedWindow && !openedWindow.closed) {
+      openedWindow.location.href = url.href;
+      return;
+    }
+    window.open(url.href, "_blank");
+  } catch {
+    // ignore
   }
 }
 
@@ -547,6 +524,19 @@ function loadSharedLayout(layoutToken) {
 
 function focusParentPasteZone() {
   window.setTimeout(() => els.pasteZone?.focus(), 0);
+}
+
+function disableParentEditingForWatch() {
+  els.parentFileInput?.setAttribute("disabled", "true");
+  els.signatureSelect?.setAttribute("disabled", "true");
+  els.clearSignature?.setAttribute("disabled", "true");
+  els.applySignature?.setAttribute("disabled", "true");
+  els.downloadParentImage?.setAttribute("disabled", "true");
+  els.shareParentImage?.setAttribute("disabled", "true");
+  if (els.pasteZone) {
+    els.pasteZone.tabIndex = -1;
+    els.pasteZone.setAttribute("aria-disabled", "true");
+  }
 }
 
 function normalizeSharedFields(fields) {
@@ -763,6 +753,7 @@ function clearSignaturePad() {
 }
 
 function applySignature() {
+  if (state.watchMode) return;
   if (!state.selectedFieldId) {
     setStatus(els.parentStatus, "目前沒有可簽名的欄位。", "error");
     return;
@@ -776,6 +767,7 @@ function applySignature() {
   state.signatures[state.selectedFieldId] = els.signaturePad.toDataURL("image/png");
   renderParentFields();
   reportSigningEvent("signed");
+  pushSigningPreview().catch(() => {});
   setStatus(els.parentStatus, "簽名已套用到目前欄位。", "success");
 }
 
@@ -788,6 +780,7 @@ async function downloadSignedDocument() {
   els.completedImage.src = dataUrl;
   els.completedImage.classList.add("active");
   reportSigningEvent("completed");
+  pushSigningPreview().catch(() => {});
   setStatus(els.parentStatus, "完成圖片已產生。若手機未自動下載，可長按下方圖片保存。", "success");
 }
 
@@ -810,6 +803,7 @@ async function shareSignedDocument() {
         files: [file],
       });
       reportSigningEvent("completed");
+      pushSigningPreview().catch(() => {});
       setStatus(els.parentStatus, "已開啟分享選單，請選擇要傳送的通訊軟體。", "success");
       return;
     } catch (error) {
@@ -822,12 +816,26 @@ async function shareSignedDocument() {
 
   downloadDataUrl(dataUrl, fileName);
   reportSigningEvent("completed");
+  pushSigningPreview().catch(() => {});
   setStatus(els.parentStatus, "此瀏覽器不支援直接分享圖片，已產生 PNG，請下載後傳送到通訊軟體。", "error");
 }
 
 function reportSigningEvent(eventName) {
   if (!state.monitorId) return;
   fetch(`/api/signing-sessions/${state.monitorId}/${eventName}`, { method: "POST" }).catch(() => {});
+}
+
+async function pushSigningPreview() {
+  if (!state.monitorId || state.watchMode || pageMode !== "parent") return;
+  if (!state.file) return;
+
+  const canvas = await composeDocumentCanvas("signed");
+  const previewDataUrl = canvas.toDataURL("image/jpeg", 0.75);
+  await fetch(`/api/signing-sessions/${state.monitorId}/snapshot`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ previewDataUrl }),
+  }).catch(() => {});
 }
 
 async function buildSignedDocumentForParent() {
@@ -935,6 +943,31 @@ async function handleDocumentPaste(event, role) {
 
 function getRoleStatusElement(role) {
   return role === "teacher" ? els.uploadStatus : els.parentStatus;
+}
+
+function initParentWatchMode() {
+  if (!state.monitorId) return;
+  syncParentWatchPreview();
+  window.setInterval(syncParentWatchPreview, 2000);
+}
+
+async function syncParentWatchPreview() {
+  if (!state.monitorId || !state.watchMode) return;
+
+  try {
+    const response = await fetch(`/api/signing-sessions/${state.monitorId}`);
+    if (!response.ok) return;
+    const session = await response.json();
+    if (!session.previewDataUrl || session.previewDataUrl === state.lastWatchPreview) return;
+
+    state.lastWatchPreview = session.previewDataUrl;
+    state.file = { name: "watch-preview.png", type: "image/png", size: 0, dataUrl: session.previewDataUrl };
+    await drawImageSource(session.previewDataUrl);
+    normalizeSourceCanvasToSharedLayout();
+    renderAll();
+  } catch {
+    // keep polling
+  }
 }
 
 function initMonitorPage() {

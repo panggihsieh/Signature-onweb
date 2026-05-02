@@ -63,9 +63,9 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    const signingEventMatch = url.pathname.match(/^\/api\/signing-sessions\/([a-f0-9]{32})\/(opened|signed|completed)$/);
+    const signingEventMatch = url.pathname.match(/^\/api\/signing-sessions\/([a-f0-9]{32})\/(opened|signed|completed|snapshot)$/);
     if (req.method === "POST" && signingEventMatch) {
-      await updateSigningSession(res, signingEventMatch[1], signingEventMatch[2]);
+      await updateSigningSession(req, res, signingEventMatch[1], signingEventMatch[2]);
       return;
     }
 
@@ -103,6 +103,8 @@ async function createSigningSession(req, res) {
     openedAt: null,
     signedAt: null,
     completedAt: null,
+    previewDataUrl: "",
+    previewUpdatedAt: null,
   };
 
   await writeSigningSession(record);
@@ -125,7 +127,7 @@ async function readSigningSession(res, id) {
   sendJson(res, 200, record);
 }
 
-async function updateSigningSession(res, id, event) {
+async function updateSigningSession(req, res, id, event) {
   const record = await getSigningSession(id);
   if (!record) {
     sendJson(res, 404, { error: "session_not_found" });
@@ -148,6 +150,14 @@ async function updateSigningSession(res, id, event) {
   if (event === "completed") {
     record.status = "completed";
     record.completedAt = now;
+  }
+  if (event === "snapshot") {
+    const payload = await readJsonBody(req);
+    const previewDataUrl = String(payload.previewDataUrl || "");
+    if (previewDataUrl.startsWith("data:image/") && previewDataUrl.length <= 1_000_000) {
+      record.previewDataUrl = previewDataUrl;
+      record.previewUpdatedAt = now;
+    }
   }
 
   await writeSigningSession(record);
