@@ -28,8 +28,6 @@ const els = {
   pasteZone: document.querySelector("#pasteZone"),
   teacherUploadBtn: document.querySelector("#teacherUploadBtn"),
   teacherPasteBtn: document.querySelector("#teacherPasteBtn"),
-  parentUploadBtn: document.querySelector("#parentUploadBtn"),
-  parentPasteBtn: document.querySelector("#parentPasteBtn"),
   uploadStatus: document.querySelector("#uploadStatus"),
   caseStatus: document.querySelector("#caseStatus"),
   parentStatus: document.querySelector("#parentStatus"),
@@ -131,8 +129,6 @@ function bindEvents() {
   els.pasteZone?.addEventListener("dragover", (event) => handlePasteZoneDragOver(event, els.pasteZone));
   els.pasteZone?.addEventListener("dragleave", () => els.pasteZone.classList.remove("active"));
   els.pasteZone?.addEventListener("drop", (event) => handleDocumentDrop(event, "parent", els.pasteZone));
-  els.parentUploadBtn?.addEventListener("click", () => els.parentFileInput?.click());
-  els.parentPasteBtn?.addEventListener("click", () => requestPasteForRole("parent"));
   window.addEventListener("paste", (event) => {
     if (event.defaultPrevented) return;
     if (pageMode === "teacher" && state.mode === "teacher") {

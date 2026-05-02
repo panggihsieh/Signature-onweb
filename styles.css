@@ -22,6 +22,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  overflow-x: hidden;
 }
 
 button,
@@ -111,6 +112,11 @@ button:disabled {
   position: sticky;
   top: 0;
   z-index: 5;
+}
+
+.topbar > div {
+  min-width: 0;
+  width: 100%;
 }
 
 .eyebrow {
@@ -215,7 +221,8 @@ main {
 }
 
 .compact {
-  max-width: 420px;
+  width: min(100%, 420px);
+  max-width: 100%;
 }
 
 .section-title {
@@ -597,11 +604,11 @@ textarea {
 
   .eyebrow {
     margin-bottom: 8px;
-    font-size: clamp(1.55rem, 8vw, 2.7rem);
+    font-size: clamp(1.35rem, 7vw, 2.25rem);
   }
 
   h1 {
-    font-size: clamp(1.8rem, 9vw, 3.2rem);
+    font-size: clamp(1.7rem, 8vw, 2.7rem);
   }
 
   .tabs {
@@ -617,9 +624,15 @@ textarea {
     display: block;
   }
 
+  main {
+    padding: 16px clamp(12px, 4vw, 22px) 32px;
+  }
+
   .panel {
     position: static;
     margin-bottom: 18px;
+    padding: clamp(14px, 4vw, 18px);
+    width: 100%;
   }
 
   .paper-text {
@@ -628,5 +641,69 @@ textarea {
 
   .document {
     width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .topbar {
+    padding: 16px 14px;
+  }
+
+  .eyebrow {
+    font-size: clamp(1.15rem, 7.2vw, 1.75rem);
+    line-height: 1.18;
+    margin-bottom: 8px;
+  }
+
+  h1 {
+    font-size: clamp(1.55rem, 10vw, 2.25rem);
+    line-height: 1.16;
+  }
+
+  main {
+    padding: 12px 10px 28px;
+  }
+
+  .teacher-flow {
+    gap: 14px;
+  }
+
+  .panel {
+    border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(26, 43, 56, 0.12);
+  }
+
+  .section-title {
+    align-items: flex-start;
+  }
+
+  .section-title span {
+    flex: 0 0 28px;
+  }
+
+  .hint,
+  .status,
+  .upload small {
+    font-size: 0.92rem;
+  }
+
+  .upload-dropzone {
+    min-height: 92px;
+    padding: 12px;
+  }
+
+  .upload-actions,
+  .share-actions,
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  button,
+  .button-link {
+    min-height: 46px;
+  }
+
+  #signaturePad {
+    height: 150px;
   }
 }
