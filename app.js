@@ -140,17 +140,29 @@ function bindEvents() {
 
 function prepareContextPasteZone(zone) {
   if (!zone) return;
+  const role = zone.id === "teacherPasteZone" ? "teacher" : "parent";
+  const helper = document.createElement("textarea");
+  helper.setAttribute("aria-hidden", "true");
+  helper.tabIndex = -1;
+  helper.style.position = "fixed";
+  helper.style.opacity = "0";
+  helper.style.pointerEvents = "none";
+  helper.style.width = "1px";
+  helper.style.height = "1px";
+  helper.style.left = "-9999px";
+  helper.style.top = "-9999px";
+  document.body.appendChild(helper);
 
-  zone.addEventListener("contextmenu", () => zone.focus());
-  zone.addEventListener("beforeinput", (event) => {
-    if (event.inputType !== "insertFromPaste") {
-      event.preventDefault();
-    }
+  zone.addEventListener("contextmenu", (event) => {
+    helper.style.left = `${event.clientX}px`;
+    helper.style.top = `${event.clientY}px`;
+    helper.focus();
+    helper.select();
   });
-  zone.addEventListener("keydown", (event) => {
-    if (event.key.length === 1 || event.key === "Enter") {
-      event.preventDefault();
-    }
+
+  helper.addEventListener("paste", async (event) => {
+    await handleDocumentPaste(event, role);
+    helper.value = "";
   });
 }
 
