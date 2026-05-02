@@ -150,6 +150,7 @@ const pasteHelpers = {
 function prepareContextPasteZone(zone) {
   if (!zone) return;
   const role = zone.id === "teacherPasteZone" ? "teacher" : "parent";
+  let longPressTimer = 0;
   const helper = document.createElement("textarea");
   helper.setAttribute("aria-hidden", "true");
   helper.tabIndex = -1;
@@ -171,19 +172,23 @@ function prepareContextPasteZone(zone) {
   });
 
   zone.addEventListener("touchstart", (event) => {
+    if (event.target.closest("input, button, select, textarea")) return;
     const touch = event.touches?.[0];
     if (!touch) return;
-    helper.style.left = `${touch.clientX}px`;
-    helper.style.top = `${touch.clientY}px`;
-    helper.style.width = "28px";
-    helper.style.height = "28px";
-    helper.style.opacity = "0.01";
-    helper.style.pointerEvents = "auto";
-    helper.focus();
-    helper.select();
+    longPressTimer = window.setTimeout(() => {
+      helper.style.left = `${touch.clientX}px`;
+      helper.style.top = `${touch.clientY}px`;
+      helper.style.width = "28px";
+      helper.style.height = "28px";
+      helper.style.opacity = "0.01";
+      helper.style.pointerEvents = "auto";
+      helper.focus();
+      helper.select();
+    }, 450);
   }, { passive: true });
 
   zone.addEventListener("touchend", () => {
+    window.clearTimeout(longPressTimer);
     window.setTimeout(() => {
       helper.value = "";
       helper.style.opacity = "0";
@@ -193,6 +198,10 @@ function prepareContextPasteZone(zone) {
       helper.style.left = "-9999px";
       helper.style.top = "-9999px";
     }, 2500);
+  }, { passive: true });
+
+  zone.addEventListener("touchmove", () => {
+    window.clearTimeout(longPressTimer);
   }, { passive: true });
 
   helper.addEventListener("paste", async (event) => {

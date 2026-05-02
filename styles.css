@@ -120,13 +120,13 @@ button:disabled {
 }
 
 .eyebrow {
-  display: inline-block;
+  display: block;
   max-width: 100%;
-  margin: 0 0 12px;
+  margin: 0 0 14px;
   color: var(--accent);
-  font-size: clamp(2rem, 5vw, 4.4rem);
+  font-size: clamp(2.2rem, 4.8vw, 4.2rem);
   font-weight: 900;
-  line-height: 1.08;
+  line-height: 1.12;
   letter-spacing: 0;
   overflow-wrap: anywhere;
   text-shadow: 0 8px 22px rgba(23, 107, 135, 0.12);
@@ -142,7 +142,7 @@ p {
 h1 {
   margin-bottom: 0;
   color: var(--ink);
-  font-size: clamp(1.8rem, 4vw, 3.8rem);
+  font-size: clamp(2rem, 3.8vw, 3.4rem);
   font-weight: 900;
   line-height: 1.08;
 }
@@ -188,8 +188,8 @@ main {
 
 .teacher-flow {
   display: none;
-  gap: 22px;
-  max-width: 980px;
+  gap: 26px;
+  max-width: 1080px;
   margin: 0 auto;
 }
 
@@ -215,7 +215,7 @@ main {
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
-  padding: 18px;
+  padding: clamp(18px, 3vw, 28px);
   position: sticky;
   top: 112px;
 }
@@ -228,18 +228,19 @@ main {
 .section-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 8px 0 12px;
+  gap: 14px;
+  margin: 6px 0 14px;
 }
 
 .section-title span {
   display: grid;
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border-radius: 50%;
   background: #dbeef3;
   color: var(--accent-strong);
+  font-size: 1.2rem;
   font-weight: 900;
 }
 
@@ -271,7 +272,7 @@ textarea {
 .upload {
   display: grid;
   gap: 4px;
-  padding: 14px;
+  padding: clamp(16px, 3vw, 24px);
   border: 1px dashed #9eb0bd;
   border-radius: 8px;
   background: #f8fafc;
@@ -285,6 +286,12 @@ textarea {
 
 .hidden-file-input {
   display: none;
+}
+
+#parentFileInput {
+  display: block;
+  margin: 10px auto 0;
+  max-width: 100%;
 }
 
 .upload small,
@@ -316,7 +323,7 @@ textarea {
 
 .upload-dropzone {
   margin-bottom: 14px;
-  min-height: 118px;
+  min-height: 128px;
   place-content: center;
   text-align: center;
 }
