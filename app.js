@@ -341,10 +341,14 @@ async function generateParentLink() {
 }
 
 async function copyParentLink() {
+  const watchWindow = window.open("about:blank", "_blank");
   const link = els.parentLink.value || await generateParentLink();
-  if (!link) return;
+  if (!link) {
+    watchWindow?.close();
+    return;
+  }
 
-  openParentWatchTab(link);
+  openParentWatchTab(link, watchWindow);
 
   const copied = copyTextToClipboard(link);
   if (copied) {
@@ -398,12 +402,17 @@ async function prepareSigningSession() {
   }
 }
 
-function openParentWatchTab(parentLink) {
+function openParentWatchTab(parentLink, watchWindow) {
   try {
     const url = new URL(parentLink);
     url.searchParams.set("watch", "1");
+    if (watchWindow && !watchWindow.closed) {
+      watchWindow.location.replace(url.href);
+      return;
+    }
     window.open(url.href, "_blank");
   } catch {
+    watchWindow?.close();
     // ignore
   }
 }
