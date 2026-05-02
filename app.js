@@ -99,6 +99,9 @@ async function init() {
 }
 
 function bindEvents() {
+  prepareContextPasteZone(els.teacherPasteZone);
+  prepareContextPasteZone(els.pasteZone);
+
   els.fileInput?.addEventListener("change", (event) => handleFileInput(event, "teacher"));
   els.parentFileInput?.addEventListener("change", (event) => handleFileInput(event, "parent"));
   els.teacherPasteZone?.addEventListener("click", () => els.teacherPasteZone.focus());
@@ -138,6 +141,22 @@ function bindEvents() {
     }
   });
   bindSignaturePad();
+}
+
+function prepareContextPasteZone(zone) {
+  if (!zone) return;
+
+  zone.addEventListener("contextmenu", () => zone.focus());
+  zone.addEventListener("beforeinput", (event) => {
+    if (event.inputType !== "insertFromPaste") {
+      event.preventDefault();
+    }
+  });
+  zone.addEventListener("keydown", (event) => {
+    if (event.key.length === 1 || event.key === "Enter") {
+      event.preventDefault();
+    }
+  });
 }
 
 function setMode(mode) {
