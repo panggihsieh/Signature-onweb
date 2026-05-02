@@ -114,10 +114,10 @@ button:disabled {
 .eyebrow {
   margin: 0 0 4px;
   color: var(--accent);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: clamp(1.1rem, 2.4vw, 1.6rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 h1,
