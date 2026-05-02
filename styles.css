@@ -41,6 +41,20 @@ button {
   font-weight: 700;
 }
 
+.button-link {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 14px;
+  text-align: center;
+  text-decoration: none;
+}
+
 button:hover {
   border-color: var(--accent);
 }
@@ -64,6 +78,34 @@ button:disabled {
 .full {
   width: 100%;
   margin-bottom: 10px;
+}
+
+.monitor-form {
+  margin: 0;
+}
+
+.teacher-monitor-panel {
+  margin-top: 22px;
+}
+
+.monitor-frame {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  height: 360px;
+  width: 100%;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
 }
 
 .topbar {
@@ -137,6 +179,30 @@ main {
 
 .workspace.active {
   display: grid;
+}
+
+.teacher-flow {
+  display: none;
+  gap: 22px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.teacher-flow.active {
+  display: grid;
+}
+
+.flow-panel {
+  position: static;
+}
+
+.teacher-preview-block {
+  display: grid;
+  gap: 12px;
+}
+
+.teacher-preview-block .hint {
+  margin-bottom: 0;
 }
 
 .panel {
@@ -229,6 +295,26 @@ textarea {
   font-weight: 700;
 }
 
+.paste-zone-large {
+  display: grid;
+  min-height: 96px;
+  place-items: center;
+  background: #f8fafc;
+  color: var(--accent-strong);
+  font-size: 1rem;
+}
+
+.upload-dropzone {
+  margin-bottom: 14px;
+  min-height: 118px;
+  place-content: center;
+  text-align: center;
+}
+
+.upload-dropzone strong {
+  color: var(--accent-strong);
+}
+
 .paste-zone:focus {
   outline: 3px solid rgba(23, 107, 135, 0.2);
   border-color: var(--accent);
@@ -252,6 +338,78 @@ textarea {
 
 .status.success {
   color: #17633a;
+}
+
+.qr-panel {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin: 6px 0 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.qr-panel[hidden] {
+  display: none;
+}
+
+.qr-code {
+  display: grid;
+  width: 204px;
+  height: 204px;
+  place-items: center;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.qr-code canvas,
+.qr-code img {
+  width: 184px;
+  height: 184px;
+}
+
+.share-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.share-actions button {
+  width: 100%;
+}
+
+.monitor-panel {
+  max-width: 620px;
+  margin: 0 auto;
+  position: static;
+}
+
+.monitor-state {
+  margin: 16px 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--accent-strong);
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.monitor-state[data-status="completed"] {
+  background: #eef8f0;
+  color: #17633a;
+}
+
+.monitor-state[data-status="missing"],
+.monitor-state[data-status="expired"],
+.monitor-state[data-status="offline"] {
+  background: #fff4f2;
+  color: #a2352a;
 }
 
 .toolbar {
@@ -318,8 +476,8 @@ textarea {
   position: absolute;
   display: grid;
   place-items: center;
-  min-width: 130px;
-  min-height: 56px;
+  min-width: 42px;
+  min-height: 28px;
   border: 2px dashed var(--accent);
   background: rgba(23, 107, 135, 0.08);
   color: var(--accent-strong);
@@ -332,6 +490,11 @@ textarea {
 
 .teacher-doc .signature-field {
   cursor: move;
+}
+
+.signature-field.editable {
+  outline: 2px solid rgba(243, 178, 60, 0.35);
+  outline-offset: 2px;
 }
 
 .signature-label {
@@ -347,24 +510,29 @@ textarea {
 
 .resize-handle {
   position: absolute;
-  right: -7px;
-  bottom: -7px;
-  width: 18px;
-  height: 18px;
-  border: 2px solid #fff;
-  border-radius: 50%;
+  right: -14px;
+  bottom: -14px;
+  z-index: 3;
+  width: 34px;
+  height: 34px;
+  border: 3px solid #fff;
+  border-radius: 8px;
   background: var(--mark);
   box-shadow: 0 2px 8px rgba(20, 33, 43, 0.24);
   cursor: nwse-resize;
+  pointer-events: auto;
   touch-action: none;
 }
 
 .resize-handle::before {
   content: "";
   position: absolute;
-  inset: 5px;
-  border-right: 2px solid rgba(20, 33, 43, 0.55);
-  border-bottom: 2px solid rgba(20, 33, 43, 0.55);
+  right: 8px;
+  bottom: 8px;
+  width: 12px;
+  height: 12px;
+  border-right: 3px solid rgba(20, 33, 43, 0.65);
+  border-bottom: 3px solid rgba(20, 33, 43, 0.65);
 }
 
 .signature-field.selected {

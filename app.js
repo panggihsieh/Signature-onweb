@@ -13,16 +13,16 @@ const state = {
   signatures: {},
   selectedFieldId: "",
   layoutSource: null,
+  monitorId: "",
   sourceCanvas: document.createElement("canvas"),
 };
 
 const els = {
-  teacherTab: document.querySelector("#teacherTab"),
-  parentTab: document.querySelector("#parentTab"),
   teacherView: document.querySelector("#teacherView"),
   parentView: document.querySelector("#parentView"),
   fileInput: document.querySelector("#fileInput"),
   parentFileInput: document.querySelector("#parentFileInput"),
+  teacherPasteZone: document.querySelector("#teacherPasteZone"),
   pasteZone: document.querySelector("#pasteZone"),
   uploadStatus: document.querySelector("#uploadStatus"),
   caseStatus: document.querySelector("#caseStatus"),
@@ -35,20 +35,30 @@ const els = {
   parentFieldLayer: document.querySelector("#parentFieldLayer"),
   addSignature: document.querySelector("#addSignature"),
   clearFields: document.querySelector("#clearFields"),
-  generateLink: document.querySelector("#generateLink"),
   parentLink: document.querySelector("#parentLink"),
+  monitorForm: document.querySelector("#monitorForm"),
+  monitorInput: document.querySelector("#monitorInput"),
+  teacherMonitorPanel: document.querySelector("#teacherMonitorPanel"),
+  teacherMonitorFrame: document.querySelector("#teacherMonitorFrame"),
   copyLink: document.querySelector("#copyLink"),
-  downloadTeacherImage: document.querySelector("#downloadTeacherImage"),
-  downloadBlankPreview: document.querySelector("#downloadBlankPreview"),
+  qrPanel: document.querySelector("#qrPanel"),
+  qrCode: document.querySelector("#qrCode"),
+  downloadQrCode: document.querySelector("#downloadQrCode"),
   signatureSelect: document.querySelector("#signatureSelect"),
   signaturePad: document.querySelector("#signaturePad"),
   clearSignature: document.querySelector("#clearSignature"),
   applySignature: document.querySelector("#applySignature"),
   downloadParentImage: document.querySelector("#downloadParentImage"),
+  shareParentImage: document.querySelector("#shareParentImage"),
   completedImage: document.querySelector("#completedImage"),
+  monitorTitle: document.querySelector("#monitorTitle"),
+  monitorState: document.querySelector("#monitorState"),
+  monitorDetail: document.querySelector("#monitorDetail"),
+  monitorUpdated: document.querySelector("#monitorUpdated"),
 };
 
-const signatureContext = els.signaturePad.getContext("2d");
+const pageMode = document.body.dataset.page || "teacher";
+const signatureContext = els.signaturePad?.getContext("2d") || null;
 let drawing = false;
 
 init();
@@ -57,68 +67,79 @@ async function init() {
   bindEvents();
   clearSignaturePad();
 
+  if (pageMode === "monitor") {
+    initMonitorPage();
+    return;
+  }
+
   const params = new URLSearchParams(location.search);
-  const legacyCaseId = params.get("case");
   const layoutToken = params.get("layout");
+  state.monitorId = params.get("monitor") || "";
 
   if (layoutToken) {
     loadSharedLayout(layoutToken);
+    reportSigningEvent("opened");
     return;
   }
-
-  if (legacyCaseId) {
-    setMode("parent");
-    drawPlaceholder("第二版不再使用第一版暫存連結", "請老師重新產生第二版排版連結，並把同意書原檔一起傳給家長。");
-    setStatus(els.parentStatus, "此連結屬於第一版流程，請改用第二版重新產生。", "error");
-    return;
-  }
-
   drawPlaceholder("請先上傳圖片或 PDF 同意書", "上傳後可拖曳並縮放家長簽名欄");
+  if (pageMode === "parent") {
+    drawPlaceholder("請載入老師提供的同意書", "請上傳或貼上老師傳來的同一份圖片或 PDF");
+    setMode("parent");
+    focusParentPasteZone();
+    return;
+  }
+
   addField();
   setMode("teacher");
+  prepareSigningSession();
 }
 
 function bindEvents() {
-  els.teacherTab.addEventListener("click", () => setMode("teacher"));
-  els.parentTab.addEventListener("click", () => setMode("parent"));
-  els.fileInput.addEventListener("change", (event) => handleFileInput(event, "teacher"));
-  els.parentFileInput.addEventListener("change", (event) => handleFileInput(event, "parent"));
-  els.addSignature.addEventListener("click", addField);
-  els.clearFields.addEventListener("click", () => {
+  els.fileInput?.addEventListener("change", (event) => handleFileInput(event, "teacher"));
+  els.parentFileInput?.addEventListener("change", (event) => handleFileInput(event, "parent"));
+  els.teacherPasteZone?.addEventListener("click", () => els.teacherPasteZone.focus());
+  els.teacherPasteZone?.addEventListener("paste", (event) => handleDocumentPaste(event, "teacher"));
+  els.teacherPasteZone?.addEventListener("dragover", (event) => handlePasteZoneDragOver(event, els.teacherPasteZone));
+  els.teacherPasteZone?.addEventListener("dragleave", () => els.teacherPasteZone.classList.remove("active"));
+  els.teacherPasteZone?.addEventListener("drop", (event) => handleDocumentDrop(event, "teacher", els.teacherPasteZone));
+  els.addSignature?.addEventListener("click", addField);
+  els.clearFields?.addEventListener("click", () => {
     state.fields = [];
     state.selectedFieldId = "";
     renderAll();
   });
-  els.generateLink.addEventListener("click", generateParentLink);
-  els.copyLink.addEventListener("click", copyParentLink);
-  els.downloadTeacherImage.addEventListener("click", () => downloadDocument("blank"));
-  els.downloadBlankPreview.addEventListener("click", () => downloadDocument("blank"));
-  els.signatureSelect.addEventListener("change", () => {
+  els.monitorForm?.addEventListener("submit", copyParentLink);
+  els.downloadQrCode?.addEventListener("click", downloadQrCode);
+  els.signatureSelect?.addEventListener("change", () => {
     state.selectedFieldId = els.signatureSelect.value;
     renderParentFields();
   });
-  els.clearSignature.addEventListener("click", clearSignaturePad);
-  els.applySignature.addEventListener("click", applySignature);
-  els.downloadParentImage.addEventListener("click", downloadSignedDocument);
-  els.pasteZone.addEventListener("click", () => els.pasteZone.focus());
-  els.pasteZone.addEventListener("paste", handleParentPaste);
-  els.pasteZone.addEventListener("dragover", handlePasteZoneDragOver);
-  els.pasteZone.addEventListener("dragleave", () => els.pasteZone.classList.remove("active"));
-  els.pasteZone.addEventListener("drop", handleParentDrop);
+  els.clearSignature?.addEventListener("click", clearSignaturePad);
+  els.applySignature?.addEventListener("click", applySignature);
+  els.downloadParentImage?.addEventListener("click", downloadSignedDocument);
+  els.shareParentImage?.addEventListener("click", shareSignedDocument);
+  els.pasteZone?.addEventListener("click", () => els.pasteZone.focus());
+  els.pasteZone?.addEventListener("paste", handleParentPaste);
+  els.pasteZone?.addEventListener("dragover", (event) => handlePasteZoneDragOver(event, els.pasteZone));
+  els.pasteZone?.addEventListener("dragleave", () => els.pasteZone.classList.remove("active"));
+  els.pasteZone?.addEventListener("drop", (event) => handleDocumentDrop(event, "parent", els.pasteZone));
   window.addEventListener("paste", (event) => {
-    if (state.mode !== "parent" || event.defaultPrevented) return;
-    handleParentPaste(event);
+    if (event.defaultPrevented) return;
+    if (pageMode === "teacher" && state.mode === "teacher") {
+      handleDocumentPaste(event, "teacher");
+      return;
+    }
+    if (state.mode === "parent") {
+      handleDocumentPaste(event, "parent");
+    }
   });
   bindSignaturePad();
 }
 
 function setMode(mode) {
   state.mode = mode;
-  const isTeacher = mode === "teacher";
-  els.teacherTab.classList.toggle("active", isTeacher);
-  els.parentTab.classList.toggle("active", !isTeacher);
-  els.teacherView.classList.toggle("active", isTeacher);
-  els.parentView.classList.toggle("active", !isTeacher);
+  const isTeacher = mode === "teacher";  els.teacherView?.classList.toggle("active", isTeacher);
+  els.parentView?.classList.toggle("active", !isTeacher);
   renderAll();
 }
 
@@ -252,15 +273,10 @@ function addField() {
   renderAll();
 }
 
-function generateParentLink() {
-  if (!state.file) {
-    setStatus(els.caseStatus, "請先上傳圖片或 PDF 同意書。", "error");
-    return;
-  }
-
+async function generateParentLink(monitorWindow = null) {
   if (!state.fields.length) {
     setStatus(els.caseStatus, "請至少新增一個簽名欄。", "error");
-    return;
+    return "";
   }
 
   const sharePayload = {
@@ -280,23 +296,216 @@ function generateParentLink() {
     })),
   };
 
-  const url = new URL("index.html", location.href);
+  const url = new URL("parent.html", location.href);
   url.searchParams.set("layout", encodeShareLayout(sharePayload));
+  const monitorId = await ensureSigningSession(monitorWindow);
+  if (monitorId) {
+    url.searchParams.set("monitor", monitorId);
+  }
   els.parentLink.value = url.href;
-  setStatus(els.caseStatus, "已產生第二版家長連結。請把這個網址和同意書原檔一起傳給家長。", "success");
+  els.parentLink.focus();
+  els.parentLink.select();
+  const qrRendered = renderQrCode(url.href);
+  if (qrRendered) {
+    const message = state.file
+      ? "已產生家長端連結與 QR Code。請把同意書原檔一起傳給家長。"
+      : "已用預設版面產生家長端連結與 QR Code。請確認欄位位置後再分享。";
+    setStatus(els.caseStatus, message, "success");
+  }
+  return url.href;
 }
 
-async function copyParentLink() {
-  if (!els.parentLink.value) {
-    generateParentLink();
+async function copyParentLink(event) {
+  if (!state.monitorId) {
+    event?.preventDefault();
   }
 
-  if (!els.parentLink.value) return;
-  await navigator.clipboard.writeText(els.parentLink.value);
-  els.copyLink.textContent = "已複製";
-  setTimeout(() => {
-    els.copyLink.textContent = "複製連結";
-  }, 1200);
+  const link = els.parentLink.value || await generateParentLink();
+  if (!link) return;
+
+  const monitorId = state.monitorId || getMonitorIdFromLink(link);
+  if (monitorId) {
+    updateMonitorLinkTarget(monitorId);
+    showInlineTeacherMonitor(monitorId);
+    if (event?.defaultPrevented) {
+      els.monitorForm?.requestSubmit();
+    }
+  }
+
+  const copied = copyTextToClipboard(link);
+  if (copied) {
+    els.parentLink.focus();
+    els.parentLink.select();
+    setStatus(els.caseStatus, "家長端分享連結已複製，也已產生 QR Code。", "success");
+    els.copyLink.textContent = "已複製分享連結";
+    setTimeout(() => {
+      els.copyLink.textContent = "複製家長端分享連結";
+    }, 1200);
+    return;
+  }
+
+  els.parentLink.focus();
+  els.parentLink.select();
+  setStatus(els.caseStatus, "瀏覽器未允許自動複製，已選取家長端連結，請按 Ctrl+C 複製。QR Code 已保留在下方。", "error");
+}
+
+async function ensureSigningSession(monitorWindow = null) {
+  if (state.monitorId) {
+    openMonitorWindow(state.monitorId, monitorWindow);
+    return state.monitorId;
+  }
+
+  try {
+    const response = await fetch("/api/signing-sessions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: state.title || "同意書" }),
+    });
+    if (!response.ok) throw new Error("monitor_unavailable");
+    const session = await response.json();
+    state.monitorId = session.id;
+    openMonitorWindow(session.id, monitorWindow);
+    return session.id;
+  } catch {
+    monitorWindow?.close?.();
+    setStatus(els.caseStatus, "分享連結已產生，但目前無法建立即時監控頁。請確認本機服務已啟動。", "error");
+    return "";
+  }
+}
+
+function openPendingMonitorWindow() {
+  try {
+    return window.open("monitor.html", "_blank");
+  } catch {
+    return null;
+  }
+}
+
+async function prepareSigningSession() {
+  if (pageMode !== "teacher") return;
+  if (state.monitorId) {
+    updateMonitorLinkTarget(state.monitorId);
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/signing-sessions", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: state.title || "同意書" }),
+    });
+    if (!response.ok) return;
+    const session = await response.json();
+    state.monitorId = session.id;
+    updateMonitorLinkTarget(session.id);
+  } catch {
+    // The share action will show a user-facing error if monitoring is still unavailable.
+  }
+}
+
+function openMonitorWindow(monitorId, monitorWindow = null) {
+  const url = new URL("monitor.html", location.href);
+  url.searchParams.set("monitor", monitorId);
+  if (monitorWindow && !monitorWindow.closed) {
+    monitorWindow.location.href = url.href;
+    monitorWindow.focus?.();
+    return true;
+  }
+  return Boolean(window.open(url.href, "_blank"));
+}
+
+function updateMonitorLinkTarget(monitorId) {
+  if (!monitorId) return;
+  const url = new URL("monitor.html", location.href);
+  url.searchParams.set("monitor", monitorId);
+  if (els.monitorInput) {
+    els.monitorInput.value = monitorId;
+  }
+  if (els.copyLink) {
+    els.copyLink.dataset.monitorUrl = url.href;
+  }
+}
+
+function showInlineTeacherMonitor(monitorId) {
+  if (!els.teacherMonitorPanel || !els.teacherMonitorFrame || !monitorId) return;
+  const url = new URL("monitor.html", location.href);
+  url.searchParams.set("monitor", monitorId);
+  els.teacherMonitorFrame.src = url.href;
+  els.teacherMonitorPanel.hidden = false;
+}
+
+function getMonitorIdFromLink(link) {
+  try {
+    return new URL(link).searchParams.get("monitor") || "";
+  } catch {
+    return "";
+  }
+}
+
+function copyTextToClipboard(text) {
+  if (!text) return false;
+
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    textarea.style.top = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    if (copied) return true;
+  } catch {
+    // Fall through to the async Clipboard API fallback.
+  }
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {});
+    return true;
+  }
+
+  return false;
+}
+
+function renderQrCode(text) {
+  if (!els.qrPanel || !els.qrCode) return false;
+
+  els.qrCode.innerHTML = "";
+  els.qrPanel.hidden = false;
+
+  if (typeof QRCode !== "function") {
+    setStatus(els.caseStatus, "家長端連結已產生，但 QR Code 套件尚未載入。請先使用複製連結。", "error");
+    return false;
+  }
+
+  new QRCode(els.qrCode, {
+    text,
+    width: 184,
+    height: 184,
+    colorDark: "#14212b",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.M,
+  });
+  return true;
+}
+
+function downloadQrCode() {
+  if (!els.qrCode) return;
+
+  const canvas = els.qrCode.querySelector("canvas");
+  if (canvas) {
+    downloadDataUrl(canvas.toDataURL("image/png"), "家長端連結-QRCode.png");
+    return;
+  }
+
+  const image = els.qrCode.querySelector("img");
+  if (image?.src) {
+    downloadDataUrl(image.src, "家長端連結-QRCode.png");
+  }
 }
 
 function loadSharedLayout(layoutToken) {
@@ -316,12 +525,17 @@ function loadSharedLayout(layoutToken) {
     setMode("parent");
     renderAll();
     setStatus(els.parentStatus, "排版連結已載入。請先貼上或上傳老師傳來的同意書，再進行簽名。", "success");
+    focusParentPasteZone();
   } catch (error) {
     setMode("parent");
     drawPlaceholder("排版連結無法讀取", "請老師重新產生第二版家長連結。");
     renderAll();
     setStatus(els.parentStatus, error.message, "error");
   }
+}
+
+function focusParentPasteZone() {
+  window.setTimeout(() => els.pasteZone?.focus(), 0);
 }
 
 function normalizeSharedFields(fields) {
@@ -350,6 +564,7 @@ function renderAll() {
 }
 
 function renderDocumentCanvas(canvas) {
+  if (!canvas) return;
   setCanvasSize(canvas, state.sourceCanvas.width || DEFAULT_DOC.width, state.sourceCanvas.height || DEFAULT_DOC.height);
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -357,12 +572,14 @@ function renderDocumentCanvas(canvas) {
 }
 
 function syncDocumentRatio(doc) {
+  if (!doc) return;
   const width = state.sourceCanvas.width || DEFAULT_DOC.width;
   const height = state.sourceCanvas.height || DEFAULT_DOC.height;
   doc.style.aspectRatio = `${width} / ${height}`;
 }
 
 function renderTeacherFields() {
+  if (!els.fieldLayer) return;
   els.fieldLayer.innerHTML = "";
   state.fields.forEach((field) => {
     const node = createFieldNode(field, true);
@@ -371,6 +588,7 @@ function renderTeacherFields() {
 }
 
 function renderParentFields() {
+  if (!els.parentFieldLayer) return;
   els.parentFieldLayer.innerHTML = "";
   state.fields.forEach((field) => {
     const node = createFieldNode(field, false);
@@ -394,6 +612,7 @@ function renderParentFields() {
 function createFieldNode(field, editable) {
   const node = document.createElement("div");
   node.className = "signature-field";
+  node.classList.toggle("editable", editable);
   node.dataset.id = field.id;
   node.style.left = `${field.x}%`;
   node.style.top = `${field.y}%`;
@@ -411,6 +630,7 @@ function createFieldNode(field, editable) {
     const handle = document.createElement("span");
     handle.className = "resize-handle";
     handle.setAttribute("aria-hidden", "true");
+    handle.title = "拖曳調整簽名欄大小";
     handle.addEventListener("pointerdown", (event) => startFieldResize(event, node, field));
     node.appendChild(handle);
   }
@@ -420,6 +640,7 @@ function createFieldNode(field, editable) {
 
 function startFieldDrag(event, node, field) {
   if (event.target.closest(".resize-handle")) return;
+  event.preventDefault();
 
   state.selectedFieldId = field.id;
   const doc = els.teacherDoc.getBoundingClientRect();
@@ -428,9 +649,9 @@ function startFieldDrag(event, node, field) {
   const startLeft = field.x;
   const startTop = field.y;
 
-  node.setPointerCapture(event.pointerId);
-  node.addEventListener("pointermove", onMove);
-  node.addEventListener("pointerup", onUp, { once: true });
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp, { once: true });
+  window.addEventListener("pointercancel", onUp, { once: true });
 
   function onMove(moveEvent) {
     const dx = ((moveEvent.clientX - startX) / doc.width) * 100;
@@ -442,7 +663,8 @@ function startFieldDrag(event, node, field) {
   }
 
   function onUp() {
-    node.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointercancel", onUp);
     renderAll();
   }
 }
@@ -458,9 +680,10 @@ function startFieldResize(event, node, field) {
   const startWidth = field.w;
   const startHeight = field.h;
 
-  node.setPointerCapture(event.pointerId);
-  node.addEventListener("pointermove", onMove);
-  node.addEventListener("pointerup", onUp, { once: true });
+  node.setPointerCapture?.(event.pointerId);
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp, { once: true });
+  window.addEventListener("pointercancel", onUp, { once: true });
 
   function onMove(moveEvent) {
     const dw = ((moveEvent.clientX - startX) / doc.width) * 100;
@@ -472,12 +695,15 @@ function startFieldResize(event, node, field) {
   }
 
   function onUp() {
-    node.removeEventListener("pointermove", onMove);
+    node.releasePointerCapture?.(event.pointerId);
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointercancel", onUp);
     renderAll();
   }
 }
 
 function renderSignatureSelect() {
+  if (!els.signatureSelect) return;
   els.signatureSelect.innerHTML = "";
   state.fields.forEach((field) => {
     const option = document.createElement("option");
@@ -489,6 +715,7 @@ function renderSignatureSelect() {
 }
 
 function bindSignaturePad() {
+  if (!signatureContext || !els.signaturePad) return;
   signatureContext.lineWidth = 4;
   signatureContext.lineCap = "round";
   signatureContext.lineJoin = "round";
@@ -519,6 +746,7 @@ function moveSignaturePen(event) {
 }
 
 function clearSignaturePad() {
+  if (!signatureContext || !els.signaturePad) return;
   signatureContext.fillStyle = "#fff";
   signatureContext.fillRect(0, 0, els.signaturePad.width, els.signaturePad.height);
 }
@@ -536,10 +764,62 @@ function applySignature() {
 
   state.signatures[state.selectedFieldId] = els.signaturePad.toDataURL("image/png");
   renderParentFields();
+  reportSigningEvent("signed");
   setStatus(els.parentStatus, "簽名已套用到目前欄位。", "success");
 }
 
 async function downloadSignedDocument() {
+  const canvas = await buildSignedDocumentForParent();
+  if (!canvas) return;
+
+  const dataUrl = canvas.toDataURL("image/png");
+  downloadDataUrl(dataUrl, `${state.title || "同意書"}-已簽名.png`);
+  els.completedImage.src = dataUrl;
+  els.completedImage.classList.add("active");
+  reportSigningEvent("completed");
+  setStatus(els.parentStatus, "完成圖片已產生。若手機未自動下載，可長按下方圖片保存。", "success");
+}
+
+async function shareSignedDocument() {
+  const canvas = await buildSignedDocumentForParent();
+  if (!canvas) return;
+
+  const fileName = `${state.title || "同意書"}-已簽名.png`;
+  const blob = await canvasToBlob(canvas, "image/png");
+  const file = new File([blob], fileName, { type: "image/png" });
+  const dataUrl = canvas.toDataURL("image/png");
+  els.completedImage.src = dataUrl;
+  els.completedImage.classList.add("active");
+
+  if (navigator.canShare?.({ files: [file] }) && navigator.share) {
+    try {
+      await navigator.share({
+        title: fileName,
+        text: "已簽名同意書",
+        files: [file],
+      });
+      reportSigningEvent("completed");
+      setStatus(els.parentStatus, "已開啟分享選單，請選擇要傳送的通訊軟體。", "success");
+      return;
+    } catch (error) {
+      if (error.name === "AbortError") {
+        setStatus(els.parentStatus, "已取消分享。", "");
+        return;
+      }
+    }
+  }
+
+  downloadDataUrl(dataUrl, fileName);
+  reportSigningEvent("completed");
+  setStatus(els.parentStatus, "此瀏覽器不支援直接分享圖片，已產生 PNG，請下載後傳送到通訊軟體。", "error");
+}
+
+function reportSigningEvent(eventName) {
+  if (!state.monitorId) return;
+  fetch(`/api/signing-sessions/${state.monitorId}/${eventName}`, { method: "POST" }).catch(() => {});
+}
+
+async function buildSignedDocumentForParent() {
   if (!state.file) {
     setStatus(els.parentStatus, "請先貼上或上傳老師傳來的同意書。", "error");
     return;
@@ -550,22 +830,19 @@ async function downloadSignedDocument() {
     return;
   }
 
-  const canvas = await composeDocumentCanvas("signed");
-  const dataUrl = canvas.toDataURL("image/png");
-  downloadDataUrl(dataUrl, `${state.title || "同意書"}-已簽名.png`);
-  els.completedImage.src = dataUrl;
-  els.completedImage.classList.add("active");
-  setStatus(els.parentStatus, "完成圖片已產生。若手機未自動下載，可長按下方圖片保存。", "success");
+  return composeDocumentCanvas("signed");
 }
 
-async function downloadDocument(kind) {
-  if (!state.file) {
-    setStatus(els.caseStatus, "請先上傳同意書，再下載預覽圖。", "error");
-    return;
-  }
-
-  const canvas = await composeDocumentCanvas(kind);
-  downloadDataUrl(canvas.toDataURL("image/png"), `${state.title || "同意書"}-空白簽名欄預覽.png`);
+function canvasToBlob(canvas, type) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error("無法產生分享圖片。"));
+      }
+    }, type);
+  });
 }
 
 async function composeDocumentCanvas(kind) {
@@ -601,35 +878,115 @@ async function composeDocumentCanvas(kind) {
   return canvas;
 }
 
-function handlePasteZoneDragOver(event) {
+function handlePasteZoneDragOver(event, zone) {
   event.preventDefault();
-  els.pasteZone.classList.add("active");
+  zone?.classList.add("active");
 }
 
-async function handleParentDrop(event) {
+async function handleDocumentDrop(event, role, zone) {
   event.preventDefault();
-  els.pasteZone.classList.remove("active");
+  zone?.classList.remove("active");
   const file = extractSupportedFile(event.dataTransfer);
   if (!file) {
-    setStatus(els.parentStatus, "拖曳內容不是可用的圖片或 PDF。", "error");
+    setStatus(getRoleStatusElement(role), "拖曳內容不是可用的圖片或 PDF。", "error");
     return;
   }
-  await loadSelectedFile(file, "parent");
+  await loadSelectedFile(file, role);
 }
 
 async function handleParentPaste(event) {
+  await handleDocumentPaste(event, "parent");
+}
+
+async function handleDocumentPaste(event, role) {
   const file = extractSupportedFile(event.clipboardData);
   if (file) {
     event.preventDefault();
-    await loadSelectedFile(file, "parent");
+    await loadSelectedFile(file, role);
     return;
   }
 
   const text = event.clipboardData?.getData("text/plain")?.trim();
   if (text && text.startsWith("data:image/")) {
     event.preventDefault();
-    await loadSelectedFile(dataUrlToFile(text, "pasted-image.png"), "parent");
+    await loadSelectedFile(dataUrlToFile(text, "pasted-image.png"), role);
+    return;
   }
+
+  if (state.mode === role) {
+    const message =
+      role === "teacher"
+        ? "剪貼簿沒有可用的圖片或 PDF。請先複製同意書圖片，或改用上傳檔案。"
+        : "剪貼簿沒有可用的圖片或 PDF。請先複製老師提供的同意書圖片，或改用上傳檔案。";
+    setStatus(getRoleStatusElement(role), message, "error");
+  }
+}
+
+function getRoleStatusElement(role) {
+  return role === "teacher" ? els.uploadStatus : els.parentStatus;
+}
+
+function initMonitorPage() {
+  const params = new URLSearchParams(location.search);
+  const monitorId = params.get("monitor") || "";
+  state.monitorId = monitorId;
+
+  if (!monitorId) {
+    renderMonitorState({ status: "missing" });
+    return;
+  }
+
+  pollMonitorState();
+  window.setInterval(pollMonitorState, 2000);
+}
+
+async function pollMonitorState() {
+  if (!state.monitorId) return;
+
+  try {
+    const response = await fetch(`/api/signing-sessions/${state.monitorId}`);
+    if (!response.ok) {
+      renderMonitorState({ status: response.status === 410 ? "expired" : "missing" });
+      return;
+    }
+    renderMonitorState(await response.json());
+  } catch {
+    renderMonitorState({ status: "offline" });
+  }
+}
+
+function renderMonitorState(session) {
+  if (!els.monitorState) return;
+
+  const statusText = {
+    waiting: "等待家長開啟連結",
+    opened: "家長已開啟連結",
+    signed: "家長已套用簽名",
+    completed: "家長已下載或分享完成圖",
+    expired: "監控連結已過期",
+    missing: "找不到監控資料",
+    offline: "暫時無法連線到本機服務",
+  };
+
+  els.monitorTitle.textContent = session.title || "簽名狀態監控";
+  els.monitorState.textContent = statusText[session.status] || "等待狀態更新";
+  els.monitorState.dataset.status = session.status || "";
+  els.monitorDetail.textContent = buildMonitorDetail(session);
+  els.monitorUpdated.textContent = session.updatedAt ? `最後更新：${formatDateTime(session.updatedAt)}` : "";
+}
+
+function buildMonitorDetail(session) {
+  if (session.status === "waiting") return "家長尚未打開分享連結。";
+  if (session.status === "opened") return "家長已進入簽名頁，尚未套用簽名。";
+  if (session.status === "signed") return "家長已套用簽名，等待下載或分享完成圖。";
+  if (session.status === "completed") return "家長已完成下載或分享。";
+  if (session.status === "expired") return "請重新產生家長端分享連結。";
+  if (session.status === "offline") return "請確認本機服務或部署服務仍在執行。";
+  return "請從老師端重新產生分享連結。";
+}
+
+function formatDateTime(value) {
+  return new Date(value).toLocaleString("zh-TW", { hour12: false });
 }
 
 function extractSupportedFile(dataTransfer) {

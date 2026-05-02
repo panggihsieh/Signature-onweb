@@ -3,119 +3,76 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>線上補簽同意書</title>
+    <title>老師端 - 線上補簽同意書</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body data-page="teacher">
     <header class="topbar">
       <div>
         <p class="eyebrow">Signature on Web</p>
-        <h1>線上補簽同意書</h1>
+        <h1>老師端排版</h1>
       </div>
-      <nav class="tabs" aria-label="工作模式">
-        <button id="teacherTab" class="tab active" type="button">老師端</button>
-        <button id="parentTab" class="tab" type="button">家長端</button>
-      </nav>
     </header>
 
     <main>
-      <section id="teacherView" class="workspace active" aria-label="老師端">
-        <aside class="panel">
+      <section id="teacherView" class="teacher-flow active" aria-label="老師端">
+        <section class="panel flow-panel">
           <div class="section-title">
             <span>1</span>
             <h2>建立同意書</h2>
           </div>
-          <div class="field">
-            <span>上傳檔案</span>
-            <label class="upload">
-              <input id="fileInput" type="file" accept="image/*,application/pdf,.pdf" />
-              <strong>選擇圖片或 PDF</strong>
-              <small>每次上傳上限 5MB，PDF 第一版使用第 1 頁作為簽名底圖</small>
-            </label>
-          </div>
+          <label id="teacherPasteZone" class="upload paste-zone upload-dropzone" tabindex="0">
+            <input id="fileInput" type="file" accept="image/*,application/pdf,.pdf" />
+            <strong>選擇、拖曳或貼上圖片/PDF</strong>
+            <small>每次上傳上限 5MB，PDF 第一頁會作為簽名底圖。點此後可按 Ctrl+V 貼上同意書圖片。</small>
+          </label>
           <p id="uploadStatus" class="status">請先上傳圖片或 PDF 同意書。</p>
+        </section>
 
+        <section class="document-shell teacher-preview-block">
           <div class="section-title">
             <span>2</span>
-            <h2>調整簽名欄位</h2>
+            <h2>老師端預覽與欄位編排</h2>
           </div>
-          <div class="toolbar">
-            <button id="addSignature" class="primary" type="button">新增簽名欄</button>
-            <button id="clearFields" type="button">清除欄位</button>
-          </div>
-          <p class="hint">拖曳簽名欄移動位置，右下角可調整大小。</p>
-
-          <div class="section-title">
-            <span>3</span>
-            <h2>送出給家長</h2>
-          </div>
-          <p class="hint">第二版不再上傳後端。老師只需確認簽名欄位置，再把排版好的網址和同意書原檔一起傳給家長。</p>
-          <button id="downloadBlankPreview" class="full" type="button">下載空白簽名欄預覽圖</button>
-          <button id="generateLink" class="primary full" type="button">產生家長連結</button>
-          <label class="field">
-            <span>家長連結</span>
-            <textarea id="parentLink" rows="4" readonly></textarea>
-          </label>
-          <button id="copyLink" type="button" class="full">複製連結</button>
-          <p id="caseStatus" class="status"></p>
-        </aside>
-
-        <section class="document-shell">
+          <p class="hint">上傳或貼上同意書後，可直接拖曳簽名欄，右下角可調整大小。</p>
           <div class="doc-actions">
-            <p>老師預覽</p>
-            <button id="downloadTeacherImage" type="button">下載空白預覽</button>
+            <p>老師端預覽</p>
           </div>
           <div id="teacherDoc" class="document teacher-doc">
             <canvas id="teacherCanvas" class="doc-canvas"></canvas>
             <div id="fieldLayer" class="field-layer"></div>
           </div>
         </section>
-      </section>
 
-      <section id="parentView" class="workspace" aria-label="家長端">
-        <aside class="panel compact">
+        <section class="panel flow-panel">
+          <div class="section-title">
+            <span>3</span>
+            <h2>分享給家長</h2>
+          </div>
+          <p class="hint">確認簽名欄位置後，請把產生的家長連結與同意書原檔一起傳給家長。</p>
+          <form id="monitorForm" class="monitor-form" action="monitor.html" method="get" target="_blank">
+            <input id="monitorInput" type="hidden" name="monitor" />
+            <button id="copyLink" class="primary full" type="submit">複製家長端分享連結</button>
+          </form>
+          <textarea id="parentLink" class="visually-hidden" rows="1" readonly tabindex="-1"></textarea>
+          <div id="qrPanel" class="qr-panel" hidden>
+            <div id="qrCode" class="qr-code" aria-label="家長端連結 QR code"></div>
+            <button id="downloadQrCode" type="button" class="full">下載 QR Code</button>
+          </div>
+          <p id="caseStatus" class="status"></p>
+        </section>
+
+        <section id="teacherMonitorPanel" class="panel flow-panel teacher-monitor-panel" hidden>
           <div class="section-title">
             <span>4</span>
-            <h2>家長簽名</h2>
+            <h2>即時監控簽名狀態</h2>
           </div>
-          <p class="hint">先把老師傳來的同意書貼上或上傳，再點選簽名欄完成手寫簽名並下載 PNG。</p>
-          <div class="field">
-            <span>同意書</span>
-            <label class="upload">
-              <input id="parentFileInput" type="file" accept="image/*,application/pdf,.pdf" />
-              <strong>上傳家長收到的同意書</strong>
-              <small>支援圖片與 PDF，也可點下面區塊後直接貼上圖片</small>
-            </label>
-          </div>
-          <div id="pasteZone" class="paste-zone" tabindex="0">點這裡後直接貼上同意書圖片</div>
-          <label class="field">
-            <span>簽名欄</span>
-            <select id="signatureSelect"></select>
-          </label>
-          <div class="signature-pad-wrap">
-            <canvas id="signaturePad" width="520" height="180" aria-label="手寫簽名板"></canvas>
-          </div>
-          <div class="toolbar">
-            <button id="clearSignature" type="button">清除簽名</button>
-            <button id="applySignature" class="primary" type="button">套用簽名</button>
-          </div>
-          <button id="downloadParentImage" class="primary full" type="button">下載完成圖片</button>
-          <p id="parentStatus" class="status"></p>
-          <img id="completedImage" class="completed-image" alt="完成圖片預覽" />
-        </aside>
-
-        <section class="document-shell">
-          <div class="doc-actions">
-            <p>家長預覽</p>
-          </div>
-          <div id="parentDoc" class="document">
-            <canvas id="parentCanvas" class="doc-canvas"></canvas>
-            <div id="parentFieldLayer" class="field-layer"></div>
-          </div>
+          <iframe id="teacherMonitorFrame" class="monitor-frame" title="即時監控簽名狀態"></iframe>
         </section>
       </section>
     </main>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

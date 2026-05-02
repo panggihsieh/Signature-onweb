@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>家長端 - 線上補簽同意書</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="parent">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Signature on Web</p>
+        <h1>家長端簽名</h1>
+      </div>
+    </header>
+
+    <main>
+      <section id="parentView" class="workspace active" aria-label="家長端">
+        <aside class="panel compact">
+          <div class="section-title">
+            <span>1</span>
+            <h2>貼上同意書</h2>
+          </div>
+          <p class="hint">收到老師分享的連結後，先複製老師傳來的同意書圖片，再回到本頁直接貼上即可開始簽名。</p>
+          <div id="pasteZone" class="paste-zone paste-zone-large" tabindex="0">點這裡後按 Ctrl+V 貼上同意書圖片</div>
+          <div class="field">
+            <span>或改用上傳檔案</span>
+            <label class="upload">
+              <input id="parentFileInput" type="file" accept="image/*,application/pdf,.pdf" />
+              <strong>選擇圖片或 PDF</strong>
+              <small>需使用老師提供的原檔，版面比例一致時簽名欄才會對齊。</small>
+            </label>
+          </div>
+
+          <div class="section-title">
+            <span>2</span>
+            <h2>手寫簽名</h2>
+          </div>
+          <label class="field">
+            <span>簽名欄位</span>
+            <select id="signatureSelect"></select>
+          </label>
+          <div class="signature-pad-wrap">
+            <canvas id="signaturePad" width="520" height="180" aria-label="手寫簽名區"></canvas>
+          </div>
+          <div class="toolbar">
+            <button id="clearSignature" type="button">清除簽名</button>
+            <button id="applySignature" class="primary" type="button">套用簽名</button>
+          </div>
+
+          <div class="section-title">
+            <span>3</span>
+            <h2>下載完成圖</h2>
+          </div>
+          <div class="share-actions">
+            <button id="downloadParentImage" class="primary" type="button">下載已簽名 PNG</button>
+            <button id="shareParentImage" type="button">分享給通訊軟體</button>
+          </div>
+          <p id="parentStatus" class="status"></p>
+          <img id="completedImage" class="completed-image" alt="已簽名同意書預覽" />
+        </aside>
+
+        <section class="document-shell">
+          <div class="doc-actions">
+            <p>家長端預覽</p>
+          </div>
+          <div id="parentDoc" class="document">
+            <canvas id="parentCanvas" class="doc-canvas"></canvas>
+            <div id="parentFieldLayer" class="field-layer"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

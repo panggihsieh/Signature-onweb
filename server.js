@@ -1,13 +1,6 @@
-import { createHash } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { createReadStream, readFileSync } from "node:fs";
-import {
-  mkdir,
-  readFile,
-  readdir,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,8 +8,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const publicRoot = resolve(__dirname);
 const tempRoot = resolve(__dirname, ".tmp");
-const caseRoot = join(tempRoot, "cases");
-const fileRoot = join(tempRoot, "files");
+const monitorRoot = join(tempRoot, "monitors");
 
 const allowedStatic = new Set([
   ".html",
@@ -51,30 +43,29 @@ const maxUploadSizeMb = Number(process.env.MAX_UPLOAD_SIZE_MB || 5);
 const maxUploadBytes = maxUploadSizeMb * 1024 * 1024;
 const ttlHours = Number(process.env.TEMP_CASE_TTL_HOURS || 4);
 const ttlMs = ttlHours * 60 * 60 * 1000;
-const publicBaseUrl = normalizeBaseUrl(process.env.PUBLIC_BASE_URL || process.env.RENDER_EXTERNAL_URL || "");
 
 await ensureStorage();
-setInterval(cleanExpiredCases, 15 * 60 * 1000).unref();
-cleanExpiredCases();
+setInterval(cleanExpiredSigningSessions, 15 * 60 * 1000).unref();
+cleanExpiredSigningSessions();
 
 const server = createServer(async (req, res) => {
   try {
     const url = new URL(req.url || "/", `http://${req.headers.host}`);
 
-    if (req.method === "POST" && url.pathname === "/api/cases") {
-      await createCase(req, res);
+    if (req.method === "POST" && url.pathname === "/api/signing-sessions") {
+      await createSigningSession(req, res);
       return;
     }
 
-    const caseMatch = url.pathname.match(/^\/api\/cases\/([a-f0-9]{32})$/);
-    if (req.method === "GET" && caseMatch) {
-      await readCase(res, caseMatch[1]);
+    const signingSessionMatch = url.pathname.match(/^\/api\/signing-sessions\/([a-f0-9]{32})$/);
+    if (req.method === "GET" && signingSessionMatch) {
+      await readSigningSession(res, signingSessionMatch[1]);
       return;
     }
 
-    const completeMatch = url.pathname.match(/^\/api\/cases\/([a-f0-9]{32})\/complete$/);
-    if (req.method === "POST" && completeMatch) {
-      await completeCase(res, completeMatch[1]);
+    const signingEventMatch = url.pathname.match(/^\/api\/signing-sessions\/([a-f0-9]{32})\/(opened|signed|completed)$/);
+    if (req.method === "POST" && signingEventMatch) {
+      await updateSigningSession(res, signingEventMatch[1], signingEventMatch[2]);
       return;
     }
 
@@ -90,7 +81,7 @@ const server = createServer(async (req, res) => {
       return;
     }
     console.error(error);
-    sendJson(res, 500, { error: "server_error", message: "伺服器暫時無法處理請求。" });
+    sendJson(res, 500, { error: "server_error", message: "伺服器發生錯誤。" });
   }
 });
 
@@ -98,236 +89,99 @@ server.listen(port, () => {
   console.log(`Signature-onweb running at http://localhost:${port}`);
 });
 
-async function createCase(req, res) {
+async function createSigningSession(req, res) {
   const payload = await readJsonBody(req);
-  const title = sanitizeText(payload.title, 80) || "未命名同意書";
-  const text = sanitizeText(payload.text, 12000);
-  const fields = normalizeFields(payload.fields);
-  const file = normalizeUpload(payload.file);
-
-  if (!fields.length) {
-    sendJson(res, 400, { error: "missing_signature_field", message: "請至少新增一個簽名欄。" });
-    return;
-  }
-
-  if (!file) {
-    sendJson(res, 400, { error: "missing_document", message: "請上傳圖片或 PDF 同意書。" });
-    return;
-  }
-
   const id = randomBytes(16).toString("hex");
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + ttlMs).toISOString();
-  const storedFile = file ? await storeFile(id, file) : null;
   const record = {
     id,
-    title,
-    text,
-    fields,
-    status: "open",
+    title: sanitizeText(payload.title, 80) || "同意書",
+    status: "waiting",
     createdAt: now.toISOString(),
-    expiresAt,
+    updatedAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + ttlMs).toISOString(),
+    openedAt: null,
+    signedAt: null,
     completedAt: null,
-    file: storedFile,
   };
 
-  await writeCase(record);
-  sendJson(res, 201, {
-    id,
-    expiresAt,
-    parentUrl: buildParentUrl(req, id),
-    storage: storedFile.storage,
-  });
+  await writeSigningSession(record);
+  sendJson(res, 201, record);
 }
 
-async function readCase(res, id) {
-  const record = await getCase(id);
-
-  if (!record || record.status !== "open") {
-    sendJson(res, 404, { error: "case_not_found", message: "此簽名連結不存在或已失效。" });
+async function readSigningSession(res, id) {
+  const record = await getSigningSession(id);
+  if (!record) {
+    sendJson(res, 404, { error: "session_not_found" });
     return;
   }
 
   if (isExpired(record)) {
-    await deleteCase(record);
-    sendJson(res, 410, { error: "case_expired", message: "此簽名連結已超過 4 小時，請向老師索取新的連結。" });
+    await rm(signingSessionPath(id), { force: true }).catch(() => {});
+    sendJson(res, 410, { error: "session_expired" });
     return;
   }
 
-  const fileDataUrl = record.file ? await readStoredFile(record.file) : "";
-  sendJson(res, 200, {
-    id: record.id,
-    title: record.title,
-    text: record.text,
-    fields: record.fields,
-    expiresAt: record.expiresAt,
-    file: record.file
-      ? {
-          name: record.file.name,
-          type: record.file.type,
-          dataUrl: fileDataUrl,
-        }
-      : null,
-  });
+  sendJson(res, 200, record);
 }
 
-async function completeCase(res, id) {
-  const record = await getCase(id);
-
+async function updateSigningSession(res, id, event) {
+  const record = await getSigningSession(id);
   if (!record) {
-    sendJson(res, 404, { error: "case_not_found" });
+    sendJson(res, 404, { error: "session_not_found" });
     return;
   }
 
-  record.status = "completed";
-  record.completedAt = new Date().toISOString();
-  await deleteCase(record);
-  sendJson(res, 200, { ok: true });
-}
+  const now = new Date().toISOString();
+  record.updatedAt = now;
 
-async function storeFile(caseId, file) {
-  const buffer = Buffer.from(file.base64, "base64");
-  const checksum = createHash("sha256").update(buffer).digest("hex");
-
-  const localName = `${caseId}${file.type === "application/pdf" ? ".pdf" : ".bin"}`;
-  await writeFile(join(fileRoot, localName), buffer);
-  return {
-    storage: "local_temp",
-    localName,
-    name: file.name,
-    type: file.type,
-    size: buffer.length,
-    checksum,
-  };
-}
-
-async function readStoredFile(file) {
-  const buffer = await readFile(join(fileRoot, file.localName));
-
-  return `data:${file.type};base64,${buffer.toString("base64")}`;
-}
-
-async function deleteCase(record) {
-  if (record.file?.storage === "local_temp") {
-    await rm(join(fileRoot, record.file.localName), { force: true }).catch(() => {});
+  if (event === "opened" && record.status === "waiting") {
+    record.status = "opened";
+    record.openedAt = now;
   }
 
-  await rm(casePath(record.id), { force: true });
+  if (event === "signed" && record.status !== "completed") {
+    record.status = "signed";
+    record.signedAt = now;
+  }
+
+  if (event === "completed") {
+    record.status = "completed";
+    record.completedAt = now;
+  }
+
+  await writeSigningSession(record);
+  sendJson(res, 200, record);
 }
 
-async function cleanExpiredCases() {
+async function cleanExpiredSigningSessions() {
   await ensureStorage();
-  const files = await readdir(caseRoot).catch(() => []);
+  const monitors = await readdir(monitorRoot).catch(() => []);
 
-  for (const file of files) {
+  for (const file of monitors) {
     if (!file.endsWith(".json")) continue;
     const id = file.slice(0, -5);
-    const record = await getCase(id);
+    const record = await getSigningSession(id);
     if (record && isExpired(record)) {
-      await deleteCase(record);
+      await rm(signingSessionPath(id), { force: true }).catch(() => {});
     }
   }
 }
 
-function normalizeUpload(file) {
-  if (!file) return null;
-
-  const name = sanitizeFileName(file.name || "consent");
-  const type = String(file.type || "");
-  const dataUrl = String(file.dataUrl || "");
-  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-
-  if (!match) {
-    throw httpError(400, "invalid_file", "檔案格式無法讀取。");
-  }
-
-  const dataType = match[1];
-  const base64 = match[2];
-  const size = Math.floor((base64.length * 3) / 4);
-  const isImage = dataType.startsWith("image/");
-  const isPdf = dataType === "application/pdf";
-
-  if (!isImage && !isPdf) {
-    throw httpError(400, "unsupported_file_type", "第一版僅支援圖片與 PDF。");
-  }
-
-  if (size > maxUploadBytes) {
-    throw httpError(413, "file_too_large", `檔案超過 ${maxUploadSizeMb}MB，請壓縮後再上傳。`);
-  }
-
-  return { name, type, base64 };
+function signingSessionPath(id) {
+  return join(monitorRoot, `${id}.json`);
 }
 
-function normalizeFields(fields) {
-  if (!Array.isArray(fields)) return [];
-  return fields
-    .map((field, index) => ({
-      id: typeof field.id === "string" ? field.id.slice(0, 80) : randomBytes(8).toString("hex"),
-      label: sanitizeText(field.label, 40) || `家長簽名 ${index + 1}`,
-      x: clampNumber(field.x, 0, 100),
-      y: clampNumber(field.y, 0, 100),
-      w: clampNumber(field.w, 8, 100),
-      h: clampNumber(field.h, 4, 50),
-    }))
-    .filter((field) => field.w > 0 && field.h > 0)
-    .slice(0, 12);
-}
-
-function sanitizeText(value, maxLength) {
-  return String(value || "").trim().slice(0, maxLength);
-}
-
-function sanitizeFileName(name) {
-  return String(name).replace(/[\\/:*?"<>|]/g, "_").slice(0, 120) || "consent";
-}
-
-function clampNumber(value, min, max) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return min;
-  return Math.min(Math.max(number, min), max);
-}
-
-async function writeCase(record) {
-  await writeFile(casePath(record.id), JSON.stringify(record, null, 2));
-}
-
-async function getCase(id) {
+async function getSigningSession(id) {
   try {
-    return JSON.parse(await readFile(casePath(id), "utf8"));
+    return JSON.parse(await readFile(signingSessionPath(id), "utf8"));
   } catch {
     return null;
   }
 }
 
-function casePath(id) {
-  return join(caseRoot, `${id}.json`);
-}
-
-function buildParentUrl(req, id) {
-  return new URL(`/index.html?case=${id}`, getRequestOrigin(req)).href;
-}
-
-function getRequestOrigin(req) {
-  if (publicBaseUrl) return publicBaseUrl;
-
-  const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim();
-  const forwardedHost = String(req.headers["x-forwarded-host"] || "").split(",")[0].trim();
-  const host = forwardedHost || String(req.headers.host || "").trim();
-  const protocol = forwardedProto || "http";
-
-  return `${protocol}://${host || `localhost:${port}`}`;
-}
-
-function normalizeBaseUrl(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return "";
-
-  try {
-    return new URL(raw).origin;
-  } catch {
-    console.warn(`Ignoring invalid PUBLIC_BASE_URL: ${raw}`);
-    return "";
-  }
+async function writeSigningSession(record) {
+  await writeFile(signingSessionPath(record.id), JSON.stringify(record, null, 2));
 }
 
 function isExpired(record) {
@@ -368,7 +222,7 @@ async function readJsonBody(req) {
   for await (const chunk of req) {
     total += chunk.length;
     if (total > limit) {
-      throw httpError(413, "payload_too_large", `上傳資料超過 ${maxUploadSizeMb}MB 限制。`);
+      throw httpError(413, "payload_too_large", `上傳內容超過 ${maxUploadSizeMb}MB。`);
     }
     chunks.push(chunk);
   }
@@ -376,7 +230,7 @@ async function readJsonBody(req) {
   try {
     return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
   } catch {
-    throw httpError(400, "invalid_json", "請求格式錯誤。");
+    throw httpError(400, "invalid_json", "請提供正確的 JSON。");
   }
 }
 
@@ -397,14 +251,12 @@ function httpError(status, error, message) {
   return problem;
 }
 
-process.on("uncaughtException", (error) => {
-  if (error.status) return;
-  console.error(error);
-});
+function sanitizeText(value, maxLength) {
+  return String(value || "").trim().slice(0, maxLength);
+}
 
 async function ensureStorage() {
-  await mkdir(caseRoot, { recursive: true });
-  await mkdir(fileRoot, { recursive: true });
+  await mkdir(monitorRoot, { recursive: true });
 }
 
 function loadDotEnv() {
@@ -420,3 +272,8 @@ function loadDotEnv() {
     // .env is optional.
   }
 }
+
+process.on("uncaughtException", (error) => {
+  if (error.status) return;
+  console.error(error);
+});
