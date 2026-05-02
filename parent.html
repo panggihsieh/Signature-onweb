@@ -22,15 +22,11 @@
             <h2>貼上同意書</h2>
           </div>
           <p class="hint">請先上傳或貼上老師提供的同意書原稿，再進行簽名。</p>
-          <div id="pasteZone" class="paste-zone paste-zone-large" tabindex="0">點這裡後按 Ctrl+V 貼上同意書圖片</div>
-          <div class="field">
-            <span>或選擇檔案</span>
-            <label class="upload">
-              <input id="parentFileInput" type="file" accept="image/*,application/pdf,.pdf" />
-              <strong>選擇圖片或 PDF</strong>
-              <small>上傳後會顯示於下方預覽，並套用老師端的簽名欄位。</small>
-            </label>
-          </div>
+          <label id="pasteZone" class="upload paste-zone upload-dropzone" tabindex="0">
+            <input id="parentFileInput" type="file" accept="image/*,application/pdf,.pdf" />
+            <strong>點擊選擇圖片/PDF，或按 Ctrl+V 貼上同意書</strong>
+            <small>上傳後會顯示於下方預覽，並套用老師端的簽名欄位。</small>
+          </label>
 
           <section class="document-shell">
             <div class="doc-actions">
