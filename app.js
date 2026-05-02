@@ -160,9 +160,40 @@ function prepareContextPasteZone(zone) {
     helper.select();
   });
 
+  zone.addEventListener("touchstart", (event) => {
+    const touch = event.touches?.[0];
+    if (!touch) return;
+    helper.style.left = `${touch.clientX}px`;
+    helper.style.top = `${touch.clientY}px`;
+    helper.style.width = "28px";
+    helper.style.height = "28px";
+    helper.style.opacity = "0.01";
+    helper.style.pointerEvents = "auto";
+    helper.focus();
+    helper.select();
+  }, { passive: true });
+
+  zone.addEventListener("touchend", () => {
+    window.setTimeout(() => {
+      helper.value = "";
+      helper.style.opacity = "0";
+      helper.style.pointerEvents = "none";
+      helper.style.width = "1px";
+      helper.style.height = "1px";
+      helper.style.left = "-9999px";
+      helper.style.top = "-9999px";
+    }, 2500);
+  }, { passive: true });
+
   helper.addEventListener("paste", async (event) => {
     await handleDocumentPaste(event, role);
     helper.value = "";
+    helper.style.opacity = "0";
+    helper.style.pointerEvents = "none";
+    helper.style.width = "1px";
+    helper.style.height = "1px";
+    helper.style.left = "-9999px";
+    helper.style.top = "-9999px";
   });
 }
 
