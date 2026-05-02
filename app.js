@@ -181,6 +181,9 @@ async function loadSelectedFile(file, role) {
     }
 
     await renderSourceFromState();
+    if (role === "parent") {
+      normalizeSourceCanvasToSharedLayout();
+    }
 
     if (role === "teacher") {
       state.layoutSource = {
@@ -256,6 +259,24 @@ function drawPlaceholder(title, subtitle) {
   ctx.fillStyle = "#66717c";
   ctx.font = "22px sans-serif";
   ctx.fillText(subtitle, DEFAULT_DOC.width / 2, DEFAULT_DOC.height / 2 + 28);
+}
+
+function normalizeSourceCanvasToSharedLayout() {
+  if (pageMode !== "parent" || !state.layoutSource) return;
+
+  const width = Math.round(Number(state.layoutSource.width) || 0);
+  const height = Math.round(Number(state.layoutSource.height) || 0);
+  if (!width || !height) return;
+  if (state.sourceCanvas.width === width && state.sourceCanvas.height === height) return;
+
+  const current = document.createElement("canvas");
+  setCanvasSize(current, state.sourceCanvas.width, state.sourceCanvas.height);
+  current.getContext("2d").drawImage(state.sourceCanvas, 0, 0);
+
+  setCanvasSize(state.sourceCanvas, width, height);
+  const ctx = state.sourceCanvas.getContext("2d");
+  ctx.clearRect(0, 0, width, height);
+  ctx.drawImage(current, 0, 0, width, height);
 }
 
 function addField() {
@@ -522,6 +543,7 @@ function loadSharedLayout(layoutToken) {
     state.file = null;
     state.signatures = {};
     drawPlaceholder("請貼上或上傳老師傳給你的同意書", "圖片可直接貼上，PDF 請改用上傳。");
+    normalizeSourceCanvasToSharedLayout();
     setMode("parent");
     renderAll();
     setStatus(els.parentStatus, "排版連結已載入。請先貼上或上傳老師傳來的同意書，再進行簽名。", "success");
