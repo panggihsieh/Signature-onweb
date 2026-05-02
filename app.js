@@ -341,19 +341,10 @@ async function generateParentLink() {
 }
 
 async function copyParentLink() {
-  const watchWindow = window.open("", "_blank");
   const link = els.parentLink.value || await generateParentLink();
-  if (!link) {
-    watchWindow?.close();
-    return;
-  }
+  if (!link) return;
 
-  const monitorId = state.monitorId || getMonitorIdFromLink(link);
-  if (monitorId) {
-    openParentWatchTab(link, watchWindow);
-  } else {
-    watchWindow?.close();
-  }
+  openParentWatchTab(link);
 
   const copied = copyTextToClipboard(link);
   if (copied) {
@@ -407,14 +398,10 @@ async function prepareSigningSession() {
   }
 }
 
-function openParentWatchTab(parentLink, openedWindow) {
+function openParentWatchTab(parentLink) {
   try {
     const url = new URL(parentLink);
     url.searchParams.set("watch", "1");
-    if (openedWindow && !openedWindow.closed) {
-      openedWindow.location.href = url.href;
-      return;
-    }
     window.open(url.href, "_blank");
   } catch {
     // ignore
