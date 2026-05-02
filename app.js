@@ -38,8 +38,6 @@ const els = {
   parentLink: document.querySelector("#parentLink"),
   monitorForm: document.querySelector("#monitorForm"),
   monitorInput: document.querySelector("#monitorInput"),
-  teacherMonitorPanel: document.querySelector("#teacherMonitorPanel"),
-  teacherMonitorFrame: document.querySelector("#teacherMonitorFrame"),
   copyLink: document.querySelector("#copyLink"),
   qrPanel: document.querySelector("#qrPanel"),
   qrCode: document.querySelector("#qrCode"),
@@ -347,7 +345,6 @@ async function copyParentLink(event) {
   const monitorId = state.monitorId || getMonitorIdFromLink(link);
   if (monitorId) {
     updateMonitorLinkTarget(monitorId);
-    showInlineTeacherMonitor(monitorId);
     if (event?.defaultPrevented) {
       els.monitorForm?.requestSubmit();
     }
@@ -445,14 +442,6 @@ function updateMonitorLinkTarget(monitorId) {
   if (els.copyLink) {
     els.copyLink.dataset.monitorUrl = url.href;
   }
-}
-
-function showInlineTeacherMonitor(monitorId) {
-  if (!els.teacherMonitorPanel || !els.teacherMonitorFrame || !monitorId) return;
-  const url = new URL("monitor.html", location.href);
-  url.searchParams.set("monitor", monitorId);
-  els.teacherMonitorFrame.src = url.href;
-  els.teacherMonitorPanel.hidden = false;
 }
 
 function getMonitorIdFromLink(link) {

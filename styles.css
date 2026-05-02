@@ -84,17 +84,6 @@ button:disabled {
   margin: 0;
 }
 
-.teacher-monitor-panel {
-  margin-top: 22px;
-}
-
-.monitor-frame {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  height: 360px;
-  width: 100%;
-}
-
 .visually-hidden {
   position: absolute;
   width: 1px;
