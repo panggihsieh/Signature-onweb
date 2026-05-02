@@ -25,6 +25,7 @@ const els = {
   fileInput: document.querySelector("#fileInput"),
   parentFileInput: document.querySelector("#parentFileInput"),
   teacherPasteZone: document.querySelector("#teacherPasteZone"),
+  teacherPasteFromClipboard: document.querySelector("#teacherPasteFromClipboard"),
   pasteZone: document.querySelector("#pasteZone"),
   uploadStatus: document.querySelector("#uploadStatus"),
   caseStatus: document.querySelector("#caseStatus"),
@@ -106,6 +107,7 @@ function bindEvents() {
   els.teacherPasteZone?.addEventListener("dragover", (event) => handlePasteZoneDragOver(event, els.teacherPasteZone));
   els.teacherPasteZone?.addEventListener("dragleave", () => els.teacherPasteZone.classList.remove("active"));
   els.teacherPasteZone?.addEventListener("drop", (event) => handleDocumentDrop(event, "teacher", els.teacherPasteZone));
+  els.teacherPasteFromClipboard?.addEventListener("click", () => pasteImageFromClipboard("teacher"));
   els.addSignature?.addEventListener("click", addField);
   els.clearFields?.addEventListener("click", () => {
     state.fields = [];
@@ -972,6 +974,29 @@ async function handleDocumentPaste(event, role) {
         ? "剪貼簿沒有可用的圖片或 PDF。請先複製同意書圖片，或改用上傳檔案。"
         : "剪貼簿沒有可用的圖片或 PDF。請先複製老師提供的同意書圖片，或改用上傳檔案。";
     setStatus(getRoleStatusElement(role), message, "error");
+  }
+}
+
+async function pasteImageFromClipboard(role) {
+  const statusEl = getRoleStatusElement(role);
+  if (!navigator.clipboard?.read) {
+    setStatus(statusEl, "This device does not support direct clipboard image reading.", "error");
+    return;
+  }
+
+  try {
+    const items = await navigator.clipboard.read();
+    for (const item of items) {
+      const imageType = item.types.find((type) => type.startsWith("image/"));
+      if (!imageType) continue;
+      const blob = await item.getType(imageType);
+      const file = new File([blob], "clipboard-image.png", { type: blob.type || imageType });
+      await loadSelectedFile(file, role);
+      return;
+    }
+    setStatus(statusEl, "Clipboard has no image. Please copy the consent image first.", "error");
+  } catch {
+    setStatus(statusEl, "Clipboard access denied. Please allow permission and try again.", "error");
   }
 }
 
