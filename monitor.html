@@ -9,18 +9,15 @@
   <body data-page="monitor">
     <header class="topbar">
       <div>
-        <p class="eyebrow">同意書線上補簽系統@codex_app</p>
+        <p class="eyebrow">同意書線上補簽系統</p>
         <h1>簽名狀態監控</h1>
       </div>
     </header>
 
     <main>
-      <section class="monitor-panel panel">
-        <div class="section-title">
-          <span>●</span>
-          <h2 id="monitorTitle">簽名狀態監控</h2>
-        </div>
-        <p id="monitorState" class="monitor-state">正在讀取狀態...</p>
+      <section class="panel monitor-panel">
+        <p id="monitorTitle" class="hint"></p>
+        <div id="monitorState" class="monitor-state"></div>
         <p id="monitorDetail" class="hint"></p>
         <p id="monitorUpdated" class="status"></p>
       </section>
