@@ -128,7 +128,9 @@ body[data-page="teacher"] .topbar > div {
 body[data-page="teacher"] .topbar .eyebrow,
 body[data-page="teacher"] .topbar h1 {
   width: 100%;
-  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center !important;
 }
 
 .eyebrow {
