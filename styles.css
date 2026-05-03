@@ -115,9 +115,18 @@ button:disabled {
 
 body[data-page="teacher"] .topbar {
   justify-content: center;
+  text-align: center;
 }
 
 body[data-page="teacher"] .topbar > div {
+  display: grid;
+  justify-items: center;
+  width: min(100%, 960px);
+  margin: 0 auto;
+}
+
+body[data-page="teacher"] .topbar .eyebrow,
+body[data-page="teacher"] .topbar h1 {
   width: 100%;
   text-align: center;
 }
