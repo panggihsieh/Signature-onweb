@@ -36,7 +36,6 @@
           <h2>簽名欄位預覽</h2>
         </div>
         <div class="share-toolbar compact-toolbar">
-          <button id="copyLink" class="primary" type="button">複製分享網址</button>
           <button id="lockField" type="button">確認欄位並鎖定</button>
         </div>
         <p class="hint">未鎖定時可拖曳與縮放簽名欄位；鎖定後就只保留簽名。</p>
@@ -45,13 +44,7 @@
           <canvas id="docCanvas" class="doc-canvas"></canvas>
           <div id="fieldLayer" class="field-layer"></div>
         </div>
-        <div id="qrPanel" class="qr-panel" hidden>
-          <div id="qrCode" class="qr-code" aria-label="分享網址 QR code"></div>
-        </div>
-        <p id="shareStatus" class="status"></p>
-      </section>
 
-      <section class="panel flow-panel signer-panel">
         <div class="section-title">
           <span>3</span>
           <h2>手寫簽名欄</h2>
@@ -64,7 +57,9 @@
           <button id="clearSignature" type="button">清除簽名</button>
           <button id="applySignature" class="primary" type="button">套用簽名</button>
         </div>
+      </section>
 
+      <section class="panel flow-panel signer-panel">
         <div class="section-title sub-title">
           <span>4</span>
           <h2>下載或分享給老師</h2>
@@ -75,6 +70,18 @@
         </div>
         <p id="signStatus" class="status"></p>
         <img id="completedImage" class="completed-image" alt="已簽名同意書預覽" />
+
+        <div class="section-title sub-title">
+          <span>5</span>
+          <h2>分享網址</h2>
+        </div>
+        <div class="share-toolbar compact-toolbar">
+          <button id="copyLink" class="primary" type="button" hidden>複製分享網址</button>
+        </div>
+        <div id="qrPanel" class="qr-panel" hidden>
+          <div id="qrCode" class="qr-code" aria-label="分享網址 QR code"></div>
+        </div>
+        <p id="shareStatus" class="status"></p>
       </section>
     </main>
 

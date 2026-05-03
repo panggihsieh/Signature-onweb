@@ -189,16 +189,21 @@ function renderModeText() {
     els.layoutHint.textContent = "簽名欄位已鎖定。現在可把網址傳給家長，家長只要上傳同意書圖片後就能簽名。";
     els.lockField.textContent = "欄位位置已鎖定";
     els.lockField.setAttribute("disabled", "true");
+    els.copyLink.hidden = false;
   } else if (state.shareToken) {
     els.modeSummary.textContent = "目前是可調整版網址。老師或家長都能開同一頁，先調整簽名欄位，再按確認鎖定。";
     els.layoutHint.textContent = "請拖曳或縮放簽名欄位，確認位置後按「確認欄位並鎖定」。";
     els.lockField.removeAttribute("disabled");
     els.lockField.textContent = "確認欄位並鎖定";
+    els.copyLink.hidden = true;
+    els.qrPanel.hidden = true;
   } else {
     els.modeSummary.textContent = "老師先在這裡上傳同意書圖片，預設會帶出一個簽名欄位，再複製網址分享出去。";
     els.layoutHint.textContent = "先上傳同意書圖片，再複製網址給家長。家長和老師都會開同一頁。";
     els.lockField.removeAttribute("disabled");
     els.lockField.textContent = "確認欄位並鎖定";
+    els.copyLink.hidden = true;
+    els.qrPanel.hidden = true;
   }
 }
 
@@ -383,6 +388,10 @@ async function copyShareLink() {
 
 function renderQrCode(text) {
   if (!els.qrPanel || !els.qrCode || !window.QRCode) return;
+  if (!state.locked) {
+    els.qrPanel.hidden = true;
+    return;
+  }
   els.qrCode.innerHTML = "";
   new QRCode(els.qrCode, {
     text,
@@ -396,10 +405,12 @@ function renderSignerState() {
   if (state.locked) {
     els.signerHint.textContent = "簽名欄已固定。請在下方手寫簽名，再套用到同意書。";
     els.applySignature.removeAttribute("disabled");
+    els.applySignature.classList.toggle("is-applied", Boolean(state.signatureDataUrl));
     return;
   }
   els.signerHint.textContent = "請先調整簽名欄位並按「確認欄位並鎖定」，之後才會啟用簽名。";
   els.applySignature.setAttribute("disabled", "true");
+  els.applySignature.classList.remove("is-applied");
 }
 
 function bindSignaturePad() {
@@ -455,6 +466,7 @@ function applySignature() {
   state.signatureDataUrl = els.signaturePad.toDataURL("image/png");
   renderSourceCanvas();
   renderField();
+  renderSignerState();
   setStatus(els.signStatus, "簽名已套用，可以下載或直接分享給老師。", "success");
 }
 
