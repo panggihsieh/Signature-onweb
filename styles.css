@@ -113,6 +113,15 @@ button:disabled {
   z-index: 5;
 }
 
+body[data-page="teacher"] .topbar {
+  justify-content: center;
+}
+
+body[data-page="teacher"] .topbar > div {
+  width: 100%;
+  text-align: center;
+}
+
 .eyebrow {
   display: inline-block;
   max-width: 100%;
