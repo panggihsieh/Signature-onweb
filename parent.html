@@ -3,14 +3,72 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>正在前往同意書線上補簽系統</title>
-    <meta http-equiv="refresh" content="0; url=index.html" />
-    <script>
-      const target = new URL("index.html", location.href);
-      target.search = location.search;
-      target.hash = location.hash;
-      location.replace(target.href);
-    </script>
+    <title>家長端 - 線上補簽同意書</title>
+    <link rel="stylesheet" href="styles.css?v=20260503-2" />
   </head>
-  <body></body>
+  <body data-page="parent">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">同意書線上補簽系統</p>
+        <h1>家長端簽名</h1>
+      </div>
+    </header>
+
+    <main>
+      <section id="parentView" class="workspace active" aria-label="家長端簽名">
+        <aside class="panel compact">
+          <div class="section-title">
+            <span>1</span>
+            <h2>貼上同意書</h2>
+          </div>
+          <p class="hint">請先上傳或貼上老師提供的同意書原稿，再進行簽名。</p>
+
+          <label id="pasteZone" class="upload paste-zone upload-dropzone" tabindex="0">
+            <input id="parentFileInput" type="file" accept="image/*,application/pdf,.pdf" />
+            <strong>選擇檔案</strong>
+            <small>可上傳圖片/PDF，也可在此區按 Ctrl+V、右鍵或手機長按貼上。</small>
+          </label>
+
+          <section class="document-shell">
+            <div class="doc-actions">
+              <p>家長端預覽</p>
+            </div>
+            <div id="parentDoc" class="document">
+              <canvas id="parentCanvas" class="doc-canvas"></canvas>
+              <div id="parentFieldLayer" class="field-layer"></div>
+            </div>
+          </section>
+
+          <div class="section-title">
+            <span>2</span>
+            <h2>填寫簽名</h2>
+          </div>
+          <label class="field">
+            <span>簽名欄位</span>
+            <select id="signatureSelect"></select>
+          </label>
+          <div class="signature-pad-wrap">
+            <canvas id="signaturePad" width="520" height="180" aria-label="手寫簽名區"></canvas>
+          </div>
+          <div class="toolbar">
+            <button id="clearSignature" type="button">清除簽名</button>
+            <button id="applySignature" class="primary" type="button">套用簽名</button>
+          </div>
+
+          <div class="section-title">
+            <span>3</span>
+            <h2>下載已簽名</h2>
+          </div>
+          <div class="share-actions">
+            <button id="downloadParentImage" class="primary" type="button">下載已簽名 PNG</button>
+            <button id="shareParentImage" type="button">分享到通訊軟體</button>
+          </div>
+          <p id="parentStatus" class="status"></p>
+          <img id="completedImage" class="completed-image" alt="已簽名完成預覽" />
+        </aside>
+      </section>
+    </main>
+
+    <script src="app.js?v=20260503-2"></script>
+  </body>
 </html>

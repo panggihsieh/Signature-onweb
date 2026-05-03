@@ -3,89 +3,65 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>同意書線上補簽系統 - 第二版</title>
-    <link rel="stylesheet" href="styles.css?v=v2-1" />
+    <title>老師端 - 線上補簽同意書</title>
+    <link rel="stylesheet" href="styles.css?v=20260503-2" />
   </head>
-  <body data-page="shared">
-    <header class="topbar shared-topbar">
-      <div class="hero-copy">
+  <body data-page="teacher">
+    <header class="topbar">
+      <div>
         <p class="eyebrow">同意書線上補簽系統</p>
-        <h1>第二版 LINE 手機版</h1>
-        <p class="hero-hint">老師與家長使用同一網頁。先分享同意書圖片，再用網址調整簽名欄位並鎖定。</p>
+        <h1>老師端排版</h1>
       </div>
     </header>
 
-    <main class="shared-main">
-      <section class="panel flow-panel">
-        <div class="section-title">
-          <span>1</span>
-          <h2>上傳同意書圖片</h2>
-        </div>
-        <p id="modeSummary" class="hint"></p>
-        <label id="uploadZone" class="upload paste-zone upload-dropzone" tabindex="0">
-          <input id="fileInput" type="file" accept="image/*,application/pdf,.pdf" />
-          <strong>點這裡選擇、拖曳或貼上圖片 / PDF</strong>
-          <small>老師先把同意書圖片分享給家長，再把這個網址一起傳出去。家長開啟同一頁後，上傳同一張同意書圖片即可簽名。</small>
-        </label>
-        <p id="uploadStatus" class="status"></p>
-      </section>
+    <main>
+      <section id="teacherView" class="teacher-flow active" aria-label="老師端排版">
+        <section class="panel flow-panel">
+          <div class="section-title">
+            <span>1</span>
+            <h2>建立同意書</h2>
+          </div>
+          <label id="teacherPasteZone" class="upload paste-zone upload-dropzone" tabindex="0">
+            <input id="fileInput" type="file" accept="image/*,application/pdf,.pdf" />
+            <strong>選擇、拖曳或貼上圖片/PDF</strong>
+            <small>每次上傳上限 5MB，PDF 第一頁會作為簽名底圖。點此後可按 Ctrl+V、右鍵或手機長按貼上同意書圖片。</small>
+          </label>
+          <p id="uploadStatus" class="status">請先上傳圖片或 PDF 同意書。</p>
+        </section>
 
-      <section class="document-shell shared-preview">
-        <div class="section-title">
-          <span>2</span>
-          <h2>簽名欄位預覽</h2>
-        </div>
-        <div class="share-toolbar compact-toolbar">
-          <button id="lockField" type="button">確認欄位並鎖定</button>
-        </div>
-        <p class="hint">未鎖定時可拖曳與縮放簽名欄位；鎖定後就只保留簽名。</p>
-        <p id="layoutHint" class="hint"></p>
-        <div id="doc" class="document shared-doc">
-          <canvas id="docCanvas" class="doc-canvas"></canvas>
-          <div id="fieldLayer" class="field-layer"></div>
-        </div>
+        <section class="document-shell teacher-preview-block">
+          <div class="section-title">
+            <span>2</span>
+            <h2>老師端預覽與欄位編排</h2>
+          </div>
+          <p class="hint">拖曳簽名框可移動位置，拉動角落控制點可調整大小。</p>
+          <div class="doc-actions">
+            <p>同意書預覽</p>
+          </div>
+          <div id="teacherDoc" class="document teacher-doc">
+            <canvas id="teacherCanvas" class="doc-canvas"></canvas>
+            <div id="fieldLayer" class="field-layer"></div>
+          </div>
+        </section>
 
-        <div class="section-title">
-          <span>3</span>
-          <h2>手寫簽名欄</h2>
-        </div>
-        <p id="signerHint" class="hint"></p>
-        <div class="signature-pad-wrap">
-          <canvas id="signaturePad" width="640" height="220" aria-label="手寫簽名板"></canvas>
-        </div>
-        <div class="toolbar">
-          <button id="clearSignature" type="button">清除簽名</button>
-          <button id="applySignature" class="primary" type="button">套用簽名</button>
-        </div>
-      </section>
-
-      <section class="panel flow-panel signer-panel">
-        <div class="section-title sub-title">
-          <span>4</span>
-          <h2>下載或分享給老師</h2>
-        </div>
-        <div class="share-actions">
-          <button id="downloadImage" class="primary" type="button">下載簽名圖片</button>
-          <button id="shareImage" type="button">分享給老師</button>
-        </div>
-        <p id="signStatus" class="status"></p>
-        <img id="completedImage" class="completed-image" alt="已簽名同意書預覽" />
-
-        <div class="section-title sub-title">
-          <span>5</span>
-          <h2>分享網址</h2>
-        </div>
-        <div class="share-toolbar compact-toolbar">
-          <button id="copyLink" class="primary" type="button" hidden>複製分享網址</button>
-        </div>
-        <div id="qrPanel" class="qr-panel" hidden>
-          <div id="qrCode" class="qr-code" aria-label="分享網址 QR code"></div>
-        </div>
-        <p id="shareStatus" class="status"></p>
+        <section class="panel flow-panel">
+          <div class="section-title">
+            <span>3</span>
+            <h2>分享給家長</h2>
+          </div>
+          <p class="hint">確認簽名欄位位置後，請把家長連結與同意書原檔一起分享給家長。</p>
+          <button id="copyLink" class="primary full" type="button">複製家長端分享連結</button>
+          <textarea id="parentLink" class="visually-hidden" rows="1" readonly tabindex="-1"></textarea>
+          <div id="qrPanel" class="qr-panel" hidden>
+            <div id="qrCode" class="qr-code" aria-label="家長端分享連結 QR code"></div>
+            <button id="downloadQrCode" type="button" class="full">下載 QR Code</button>
+          </div>
+          <p id="caseStatus" class="status"></p>
+        </section>
       </section>
     </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="app.js?v=v2-1"></script>
+    <script src="app.js?v=20260503-2"></script>
   </body>
 </html>

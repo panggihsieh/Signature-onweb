@@ -1,0 +1,384 @@
+:root {
+  color-scheme: light;
+  --bg: #edf2f7;
+  --ink: #14212b;
+  --muted: #66717c;
+  --line: #cdd6df;
+  --panel: #ffffff;
+  --accent: #176b87;
+  --accent-strong: #0f5369;
+  --mark: #f3b23c;
+  --paper: #fffdf8;
+  --shadow: 0 18px 50px rgba(26, 43, 56, 0.14);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.primary:hover {
+  background: var(--accent-strong);
+}
+
+button.is-applied,
+button.is-applied:hover {
+  border-color: #17633a;
+  background: #17633a;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(23, 99, 58, 0.16);
+}
+
+.topbar {
+  padding: clamp(24px, 5vw, 56px) clamp(18px, 5vw, 56px);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(241, 248, 251, 0.92)),
+    #ffffff;
+  border-bottom: 1px solid var(--line);
+}
+
+.shared-topbar {
+  text-align: center;
+}
+
+.hero-copy {
+  width: min(100%, 980px);
+  margin: 0 auto;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--accent);
+  font-size: clamp(2rem, 7vw, 4rem);
+  font-weight: 900;
+  line-height: 1.05;
+  text-shadow: 0 8px 18px rgba(23, 107, 135, 0.12);
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 10px;
+  font-size: clamp(1.8rem, 6vw, 3.2rem);
+  line-height: 1.1;
+}
+
+h2 {
+  margin-bottom: 0;
+  font-size: 1.05rem;
+}
+
+.hero-hint,
+.hint,
+.status,
+.upload small {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.shared-main {
+  display: grid;
+  gap: 22px;
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: 22px clamp(16px, 4vw, 28px) 44px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+
+.section-title span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: #dbeef3;
+  color: var(--accent-strong);
+  font-weight: 900;
+}
+
+.sub-title {
+  margin-top: 18px;
+}
+
+.upload {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border: 1px dashed #9eb0bd;
+  border-radius: 8px;
+  background: #f8fafc;
+  cursor: pointer;
+  text-align: center;
+}
+
+.upload input {
+  display: none;
+}
+
+.upload strong {
+  color: var(--accent-strong);
+  font-size: 1.05rem;
+}
+
+.paste-zone.active,
+.paste-zone:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #eef8fb;
+}
+
+.status {
+  min-height: 22px;
+  margin-bottom: 0;
+  font-size: 0.94rem;
+}
+
+.status.error {
+  color: #a2352a;
+}
+
+.status.success {
+  color: #17633a;
+}
+
+.share-toolbar,
+.share-actions,
+.toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.qr-panel {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.qr-panel[hidden] {
+  display: none;
+}
+
+.qr-code {
+  display: grid;
+  width: 204px;
+  height: 204px;
+  place-items: center;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.qr-code canvas,
+.qr-code img {
+  width: 184px;
+  height: 184px;
+}
+
+.document-shell {
+  min-width: 0;
+}
+
+.shared-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.document {
+  width: min(100%, 860px);
+  aspect-ratio: 3 / 4;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+  background: var(--paper);
+  border: 1px solid #d7cab4;
+  box-shadow: var(--shadow);
+}
+
+.doc-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.field-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.signature-field {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  min-width: 42px;
+  min-height: 28px;
+  border: 2px dashed var(--accent);
+  background: rgba(23, 107, 135, 0.08);
+  color: var(--accent-strong);
+  font-weight: 900;
+  pointer-events: auto;
+  user-select: none;
+  touch-action: none;
+  overflow: visible;
+  cursor: move;
+}
+
+.signature-field.editable {
+  outline: 2px solid rgba(243, 178, 60, 0.35);
+  outline-offset: 2px;
+}
+
+.signature-label {
+  display: block;
+  max-width: calc(100% - 18px);
+  overflow: hidden;
+  padding: 0 8px;
+  pointer-events: none;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.92rem;
+}
+
+.resize-handle {
+  position: absolute;
+  right: -14px;
+  bottom: -14px;
+  z-index: 3;
+  width: 34px;
+  height: 34px;
+  border: 3px solid #fff;
+  border-radius: 8px;
+  background: var(--mark);
+  box-shadow: 0 2px 8px rgba(20, 33, 43, 0.24);
+  cursor: nwse-resize;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.resize-handle::before {
+  content: "";
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 12px;
+  height: 12px;
+  border-right: 3px solid rgba(20, 33, 43, 0.65);
+  border-bottom: 3px solid rgba(20, 33, 43, 0.65);
+}
+
+.signer-panel {
+  position: static;
+}
+
+.signature-pad-wrap {
+  background: #f7fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+#signaturePad {
+  display: block;
+  width: 100%;
+  height: 220px;
+  background: #fff;
+  border-radius: 6px;
+  touch-action: none;
+}
+
+.completed-image {
+  display: none;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-top: 12px;
+}
+
+.completed-image.active {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .shared-main {
+    padding-inline: 16px;
+  }
+
+  .share-toolbar,
+  .share-actions,
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .document {
+    width: 100%;
+  }
+
+  #signaturePad {
+    height: 200px;
+  }
+}

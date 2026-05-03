@@ -199,7 +199,14 @@ function isExpired(record) {
 }
 
 async function serveStatic(res, pathname) {
-  const decoded = decodeURIComponent(pathname === "/" ? "/index.html" : pathname);
+  let requestedPath = pathname === "/" ? "/index.html" : pathname;
+  if (requestedPath.endsWith("/")) {
+    requestedPath = `${requestedPath}index.html`;
+  } else if (!extname(requestedPath)) {
+    requestedPath = `${requestedPath}/index.html`;
+  }
+
+  const decoded = decodeURIComponent(requestedPath);
   const safePath = normalize(decoded).replace(/^(\.\.[/\\])+/, "");
   const target = resolve(publicRoot, `.${safePath}`);
 
