@@ -71,8 +71,8 @@ async function init() {
   }
 
   const params = new URLSearchParams(location.search);
-  const layoutToken = params.get("layout");
-  state.monitorId = params.get("monitor") || "";
+  const layoutToken = params.get("d") || params.get("layout");
+  state.monitorId = params.get("m") || params.get("monitor") || "";
   state.watchMode = params.get("watch") === "1";
 
   if (layoutToken) {
@@ -379,10 +379,10 @@ async function generateParentLink() {
   };
 
   const url = new URL("parent.html", location.href);
-  url.searchParams.set("layout", encodeShareLayout(sharePayload));
+  url.searchParams.set("d", encodeShareLayout(sharePayload));
   const monitorId = await ensureSigningSession();
   if (monitorId) {
-    url.searchParams.set("monitor", monitorId);
+    url.searchParams.set("m", monitorId);
   }
   els.parentLink.value = url.href;
   els.parentLink.focus();
@@ -513,7 +513,8 @@ function renderWatchLinkFallbackPage(watchWindow, parentLink) {
 
 function getMonitorIdFromLink(link) {
   try {
-    return new URL(link).searchParams.get("monitor") || "";
+    const params = new URL(link).searchParams;
+    return params.get("m") || params.get("monitor") || "";
   } catch {
     return "";
   }
@@ -1061,7 +1062,7 @@ async function syncParentWatchPreview() {
 
 function initMonitorPage() {
   const params = new URLSearchParams(location.search);
-  const monitorId = params.get("monitor") || "";
+  const monitorId = params.get("m") || params.get("monitor") || "";
   state.monitorId = monitorId;
 
   if (!monitorId) {
