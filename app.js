@@ -101,7 +101,7 @@ function bindEvents() {
 
   els.fileInput?.addEventListener("change", (event) => handleFileInput(event, "teacher"));
   els.parentFileInput?.addEventListener("change", (event) => handleFileInput(event, "parent"));
-  els.teacherPasteZone?.addEventListener("click", () => els.teacherPasteZone.focus());
+  els.teacherPasteZone?.addEventListener("click", (event) => handlePasteZoneClick(event, "teacher"));
   els.teacherPasteZone?.addEventListener("paste", (event) => handleDocumentPaste(event, "teacher"));
   els.teacherPasteZone?.addEventListener("dragover", (event) => handlePasteZoneDragOver(event, els.teacherPasteZone));
   els.teacherPasteZone?.addEventListener("dragleave", () => els.teacherPasteZone.classList.remove("active"));
@@ -124,7 +124,7 @@ function bindEvents() {
   els.applySignature?.addEventListener("click", applySignature);
   els.downloadParentImage?.addEventListener("click", downloadSignedDocument);
   els.shareParentImage?.addEventListener("click", shareSignedDocument);
-  els.pasteZone?.addEventListener("click", () => els.pasteZone.focus());
+  els.pasteZone?.addEventListener("click", (event) => handlePasteZoneClick(event, "parent"));
   els.pasteZone?.addEventListener("paste", handleParentPaste);
   els.pasteZone?.addEventListener("dragover", (event) => handlePasteZoneDragOver(event, els.pasteZone));
   els.pasteZone?.addEventListener("dragleave", () => els.pasteZone.classList.remove("active"));
@@ -140,6 +140,15 @@ function bindEvents() {
     }
   });
   bindSignaturePad();
+}
+
+function handlePasteZoneClick(event, role) {
+  if (event.target.closest("button, input, select, textarea, a")) return;
+  if (role === "teacher") {
+    els.fileInput?.click();
+    return;
+  }
+  els.parentFileInput?.click();
 }
 
 const pasteHelpers = {
