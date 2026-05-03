@@ -30,15 +30,20 @@
         <p id="uploadStatus" class="status"></p>
       </section>
 
-      <section class="panel flow-panel">
+      <section class="document-shell shared-preview">
         <div class="section-title">
           <span>2</span>
-          <h2>分享網址與欄位控制</h2>
+          <h2>簽名欄位預覽</h2>
         </div>
-        <p id="layoutHint" class="hint"></p>
-        <div class="share-toolbar">
+        <div class="share-toolbar compact-toolbar">
           <button id="copyLink" class="primary" type="button">複製分享網址</button>
           <button id="lockField" type="button">確認欄位並鎖定</button>
+        </div>
+        <p class="hint">未鎖定時可拖曳與縮放簽名欄位；鎖定後就只保留簽名。</p>
+        <p id="layoutHint" class="hint"></p>
+        <div id="doc" class="document shared-doc">
+          <canvas id="docCanvas" class="doc-canvas"></canvas>
+          <div id="fieldLayer" class="field-layer"></div>
         </div>
         <div id="qrPanel" class="qr-panel" hidden>
           <div id="qrCode" class="qr-code" aria-label="分享網址 QR code"></div>
@@ -46,21 +51,9 @@
         <p id="shareStatus" class="status"></p>
       </section>
 
-      <section class="document-shell shared-preview">
-        <div class="section-title">
-          <span>3</span>
-          <h2>簽名欄位預覽</h2>
-        </div>
-        <p class="hint">未鎖定時可拖曳與縮放簽名欄位；鎖定後就只保留簽名。</p>
-        <div id="doc" class="document shared-doc">
-          <canvas id="docCanvas" class="doc-canvas"></canvas>
-          <div id="fieldLayer" class="field-layer"></div>
-        </div>
-      </section>
-
       <section class="panel flow-panel signer-panel">
         <div class="section-title">
-          <span>4</span>
+          <span>3</span>
           <h2>手寫簽名欄</h2>
         </div>
         <p id="signerHint" class="hint"></p>
@@ -73,7 +66,7 @@
         </div>
 
         <div class="section-title sub-title">
-          <span>5</span>
+          <span>4</span>
           <h2>下載或分享給老師</h2>
         </div>
         <div class="share-actions">
