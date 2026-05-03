@@ -22,7 +22,6 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
-  overflow-x: hidden;
 }
 
 button,
@@ -100,13 +99,11 @@ button:disabled {
 
 .topbar {
   display: flex;
-  align-items: center;
+  align-items: end;
   justify-content: space-between;
   gap: 20px;
-  padding: clamp(22px, 4vw, 46px) clamp(18px, 5vw, 72px);
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(244, 249, 251, 0.88)),
-    #ffffff;
+  padding: 24px clamp(16px, 4vw, 44px);
+  background: #ffffffcc;
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(12px);
   position: sticky;
@@ -114,22 +111,12 @@ button:disabled {
   z-index: 5;
 }
 
-.topbar > div {
-  min-width: 0;
-  width: 100%;
-}
-
 .eyebrow {
-  display: block;
-  max-width: 100%;
-  margin: 0 0 14px;
+  margin: 0 0 4px;
   color: var(--accent);
-  font-size: clamp(2.2rem, 4.8vw, 4.2rem);
+  font-size: clamp(1.1rem, 2.4vw, 1.6rem);
   font-weight: 900;
-  line-height: 1.12;
   letter-spacing: 0;
-  overflow-wrap: anywhere;
-  text-shadow: 0 8px 22px rgba(23, 107, 135, 0.12);
   text-transform: none;
 }
 
@@ -141,10 +128,7 @@ p {
 
 h1 {
   margin-bottom: 0;
-  color: var(--ink);
-  font-size: clamp(2rem, 3.8vw, 3.4rem);
-  font-weight: 900;
-  line-height: 1.08;
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
 }
 
 h2 {
@@ -188,8 +172,8 @@ main {
 
 .teacher-flow {
   display: none;
-  gap: 26px;
-  max-width: 1080px;
+  gap: 22px;
+  max-width: 980px;
   margin: 0 auto;
 }
 
@@ -215,32 +199,30 @@ main {
   border: 1px solid var(--line);
   border-radius: 8px;
   box-shadow: var(--shadow);
-  padding: clamp(18px, 3vw, 28px);
+  padding: 18px;
   position: sticky;
   top: 112px;
 }
 
 .compact {
-  width: min(100%, 420px);
-  max-width: 100%;
+  max-width: 420px;
 }
 
 .section-title {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin: 6px 0 14px;
+  gap: 10px;
+  margin: 8px 0 12px;
 }
 
 .section-title span {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   place-items: center;
   border-radius: 50%;
   background: #dbeef3;
   color: var(--accent-strong);
-  font-size: 1.2rem;
   font-weight: 900;
 }
 
@@ -272,7 +254,7 @@ textarea {
 .upload {
   display: grid;
   gap: 4px;
-  padding: clamp(16px, 3vw, 24px);
+  padding: 14px;
   border: 1px dashed #9eb0bd;
   border-radius: 8px;
   background: #f8fafc;
@@ -282,16 +264,6 @@ textarea {
 
 .upload input {
   display: none;
-}
-
-.hidden-file-input {
-  display: none;
-}
-
-#parentFileInput {
-  display: block;
-  margin: 10px auto 0;
-  max-width: 100%;
 }
 
 .upload small,
@@ -323,24 +295,13 @@ textarea {
 
 .upload-dropzone {
   margin-bottom: 14px;
-  min-height: 128px;
+  min-height: 118px;
   place-content: center;
   text-align: center;
 }
 
 .upload-dropzone strong {
   color: var(--accent-strong);
-}
-
-.upload-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.upload-actions button {
-  width: 100%;
 }
 
 .paste-zone:focus {
@@ -605,17 +566,6 @@ textarea {
   .topbar {
     align-items: stretch;
     flex-direction: column;
-    gap: 10px;
-    padding: 20px clamp(16px, 5vw, 28px);
-  }
-
-  .eyebrow {
-    margin-bottom: 8px;
-    font-size: clamp(1.35rem, 7vw, 2.25rem);
-  }
-
-  h1 {
-    font-size: clamp(1.7rem, 8vw, 2.7rem);
   }
 
   .tabs {
@@ -631,15 +581,9 @@ textarea {
     display: block;
   }
 
-  main {
-    padding: 16px clamp(12px, 4vw, 22px) 32px;
-  }
-
   .panel {
     position: static;
     margin-bottom: 18px;
-    padding: clamp(14px, 4vw, 18px);
-    width: 100%;
   }
 
   .paper-text {
@@ -648,69 +592,5 @@ textarea {
 
   .document {
     width: 100%;
-  }
-}
-
-@media (max-width: 520px) {
-  .topbar {
-    padding: 16px 14px;
-  }
-
-  .eyebrow {
-    font-size: clamp(1.15rem, 7.2vw, 1.75rem);
-    line-height: 1.18;
-    margin-bottom: 8px;
-  }
-
-  h1 {
-    font-size: clamp(1.55rem, 10vw, 2.25rem);
-    line-height: 1.16;
-  }
-
-  main {
-    padding: 12px 10px 28px;
-  }
-
-  .teacher-flow {
-    gap: 14px;
-  }
-
-  .panel {
-    border-radius: 8px;
-    box-shadow: 0 10px 28px rgba(26, 43, 56, 0.12);
-  }
-
-  .section-title {
-    align-items: flex-start;
-  }
-
-  .section-title span {
-    flex: 0 0 28px;
-  }
-
-  .hint,
-  .status,
-  .upload small {
-    font-size: 0.92rem;
-  }
-
-  .upload-dropzone {
-    min-height: 92px;
-    padding: 12px;
-  }
-
-  .upload-actions,
-  .share-actions,
-  .toolbar {
-    grid-template-columns: 1fr;
-  }
-
-  button,
-  .button-link {
-    min-height: 46px;
-  }
-
-  #signaturePad {
-    height: 150px;
   }
 }

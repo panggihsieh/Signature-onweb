@@ -26,8 +26,6 @@ const els = {
   parentFileInput: document.querySelector("#parentFileInput"),
   teacherPasteZone: document.querySelector("#teacherPasteZone"),
   pasteZone: document.querySelector("#pasteZone"),
-  teacherUploadBtn: document.querySelector("#teacherUploadBtn"),
-  teacherPasteBtn: document.querySelector("#teacherPasteBtn"),
   uploadStatus: document.querySelector("#uploadStatus"),
   caseStatus: document.querySelector("#caseStatus"),
   parentStatus: document.querySelector("#parentStatus"),
@@ -101,13 +99,11 @@ function bindEvents() {
 
   els.fileInput?.addEventListener("change", (event) => handleFileInput(event, "teacher"));
   els.parentFileInput?.addEventListener("change", (event) => handleFileInput(event, "parent"));
-  els.teacherPasteZone?.addEventListener("click", (event) => handlePasteZoneClick(event, "teacher"));
+  els.teacherPasteZone?.addEventListener("click", () => els.teacherPasteZone.focus());
   els.teacherPasteZone?.addEventListener("paste", (event) => handleDocumentPaste(event, "teacher"));
   els.teacherPasteZone?.addEventListener("dragover", (event) => handlePasteZoneDragOver(event, els.teacherPasteZone));
   els.teacherPasteZone?.addEventListener("dragleave", () => els.teacherPasteZone.classList.remove("active"));
   els.teacherPasteZone?.addEventListener("drop", (event) => handleDocumentDrop(event, "teacher", els.teacherPasteZone));
-  els.teacherUploadBtn?.addEventListener("click", () => els.fileInput?.click());
-  els.teacherPasteBtn?.addEventListener("click", () => requestPasteForRole("teacher"));
   els.addSignature?.addEventListener("click", addField);
   els.clearFields?.addEventListener("click", () => {
     state.fields = [];
@@ -124,7 +120,7 @@ function bindEvents() {
   els.applySignature?.addEventListener("click", applySignature);
   els.downloadParentImage?.addEventListener("click", downloadSignedDocument);
   els.shareParentImage?.addEventListener("click", shareSignedDocument);
-  els.pasteZone?.addEventListener("click", (event) => handlePasteZoneClick(event, "parent"));
+  els.pasteZone?.addEventListener("click", () => els.pasteZone.focus());
   els.pasteZone?.addEventListener("paste", handleParentPaste);
   els.pasteZone?.addEventListener("dragover", (event) => handlePasteZoneDragOver(event, els.pasteZone));
   els.pasteZone?.addEventListener("dragleave", () => els.pasteZone.classList.remove("active"));
@@ -142,24 +138,9 @@ function bindEvents() {
   bindSignaturePad();
 }
 
-function handlePasteZoneClick(event, role) {
-  if (event.target.closest("button, input, select, textarea, a")) return;
-  if (role === "teacher") {
-    els.fileInput?.click();
-    return;
-  }
-  els.parentFileInput?.click();
-}
-
-const pasteHelpers = {
-  teacher: null,
-  parent: null,
-};
-
 function prepareContextPasteZone(zone) {
   if (!zone) return;
   const role = zone.id === "teacherPasteZone" ? "teacher" : "parent";
-  let longPressTimer = 0;
   const helper = document.createElement("textarea");
   helper.setAttribute("aria-hidden", "true");
   helper.tabIndex = -1;
@@ -171,7 +152,6 @@ function prepareContextPasteZone(zone) {
   helper.style.left = "-9999px";
   helper.style.top = "-9999px";
   document.body.appendChild(helper);
-  pasteHelpers[role] = helper;
 
   zone.addEventListener("contextmenu", (event) => {
     helper.style.left = `${event.clientX}px`;
@@ -181,23 +161,19 @@ function prepareContextPasteZone(zone) {
   });
 
   zone.addEventListener("touchstart", (event) => {
-    if (event.target.closest("input, button, select, textarea")) return;
     const touch = event.touches?.[0];
     if (!touch) return;
-    longPressTimer = window.setTimeout(() => {
-      helper.style.left = `${touch.clientX}px`;
-      helper.style.top = `${touch.clientY}px`;
-      helper.style.width = "28px";
-      helper.style.height = "28px";
-      helper.style.opacity = "0.01";
-      helper.style.pointerEvents = "auto";
-      helper.focus();
-      helper.select();
-    }, 450);
+    helper.style.left = `${touch.clientX}px`;
+    helper.style.top = `${touch.clientY}px`;
+    helper.style.width = "28px";
+    helper.style.height = "28px";
+    helper.style.opacity = "0.01";
+    helper.style.pointerEvents = "auto";
+    helper.focus();
+    helper.select();
   }, { passive: true });
 
   zone.addEventListener("touchend", () => {
-    window.clearTimeout(longPressTimer);
     window.setTimeout(() => {
       helper.value = "";
       helper.style.opacity = "0";
@@ -207,10 +183,6 @@ function prepareContextPasteZone(zone) {
       helper.style.left = "-9999px";
       helper.style.top = "-9999px";
     }, 2500);
-  }, { passive: true });
-
-  zone.addEventListener("touchmove", () => {
-    window.clearTimeout(longPressTimer);
   }, { passive: true });
 
   helper.addEventListener("paste", async (event) => {
@@ -223,40 +195,6 @@ function prepareContextPasteZone(zone) {
     helper.style.left = "-9999px";
     helper.style.top = "-9999px";
   });
-}
-
-async function requestPasteForRole(role) {
-  const statusEl = role === "teacher" ? els.uploadStatus : els.parentStatus;
-  const helper = pasteHelpers[role];
-
-  if (navigator.clipboard?.read) {
-    try {
-      const items = await navigator.clipboard.read();
-      for (const item of items) {
-        const imageType = item.types.find((type) => type.startsWith("image/"));
-        if (!imageType) continue;
-        const blob = await item.getType(imageType);
-        const file = new File([blob], "clipboard-image.png", { type: blob.type || imageType });
-        await loadSelectedFile(file, role);
-        return;
-      }
-      setStatus(statusEl, "剪貼簿沒有圖片，請先複製題圖。", "error");
-      return;
-    } catch {
-      // Fall back to manual paste target below.
-    }
-  }
-
-  if (helper) {
-    helper.style.left = "20px";
-    helper.style.top = "20px";
-    helper.focus();
-    helper.select();
-    setStatus(statusEl, "請按 Ctrl+V 或滑鼠右鍵貼上題圖。", "success");
-    return;
-  }
-
-  setStatus(statusEl, "目前無法貼上，請改用上傳題圖。", "error");
 }
 
 function setMode(mode) {

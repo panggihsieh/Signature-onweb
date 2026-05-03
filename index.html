@@ -15,23 +15,17 @@
     </header>
 
     <main>
-      <section id="teacherView" class="teacher-flow active" aria-label="老師端排版">
+      <section id="teacherView" class="teacher-flow active" aria-label="老師端">
         <section class="panel flow-panel">
           <div class="section-title">
             <span>1</span>
             <h2>建立同意書</h2>
           </div>
-          <p class="hint">上傳或貼上同意書原稿，系統會顯示預覽並保留簽名欄位位置。</p>
-
-          <input id="fileInput" class="hidden-file-input" type="file" accept="image/*,application/pdf,.pdf" />
-          <div id="teacherPasteZone" class="upload paste-zone upload-dropzone" tabindex="0" role="button" aria-label="上傳或貼上同意書">
-            <strong>點擊這裡選擇圖片/PDF，或按 Ctrl+V 貼上同意書</strong>
-            <small>每次上傳上限 5MB，PDF 第一頁會作為簽名底圖。也可右鍵或手機長按貼上圖片。</small>
-          </div>
-          <div class="upload-actions">
-            <button id="teacherUploadBtn" type="button" class="primary">上傳題圖</button>
-            <button id="teacherPasteBtn" type="button">貼上題圖</button>
-          </div>
+          <label id="teacherPasteZone" class="upload paste-zone upload-dropzone" tabindex="0">
+            <input id="fileInput" type="file" accept="image/*,application/pdf,.pdf" />
+            <strong>選擇、拖曳或貼上圖片/PDF</strong>
+            <small>每次上傳上限 5MB，PDF 第一頁會作為簽名底圖。點此後可按 Ctrl+V 貼上同意書圖片。</small>
+          </label>
           <p id="uploadStatus" class="status">請先上傳圖片或 PDF 同意書。</p>
         </section>
 
@@ -40,9 +34,9 @@
             <span>2</span>
             <h2>老師端預覽與欄位編排</h2>
           </div>
-          <p class="hint">拖曳簽名框可移動位置，拉動角落控制點可調整大小。</p>
+          <p class="hint">上傳或貼上同意書後，可直接拖曳簽名欄，右下角可調整大小。</p>
           <div class="doc-actions">
-            <p>同意書預覽</p>
+            <p>老師端預覽</p>
           </div>
           <div id="teacherDoc" class="document teacher-doc">
             <canvas id="teacherCanvas" class="doc-canvas"></canvas>
@@ -55,15 +49,16 @@
             <span>3</span>
             <h2>分享給家長</h2>
           </div>
-          <p class="hint">確認簽名欄位位置後，產生家長端連結與 QR Code，家長可開啟同一簽名頁完成補簽。</p>
+          <p class="hint">確認簽名欄位置後，請把產生的家長連結與同意書原檔一起傳給家長。</p>
           <button id="copyLink" class="primary full" type="button">複製家長端分享連結</button>
           <textarea id="parentLink" class="visually-hidden" rows="1" readonly tabindex="-1"></textarea>
           <div id="qrPanel" class="qr-panel" hidden>
-            <div id="qrCode" class="qr-code" aria-label="家長端分享連結 QR code"></div>
+            <div id="qrCode" class="qr-code" aria-label="家長端連結 QR code"></div>
             <button id="downloadQrCode" type="button" class="full">下載 QR Code</button>
           </div>
           <p id="caseStatus" class="status"></p>
         </section>
+
       </section>
     </main>
 
