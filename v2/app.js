@@ -54,12 +54,19 @@ async function init() {
 }
 
 function bindEvents() {
+  preparePasteZone(els.uploadZone);
   els.loadImageUrl?.addEventListener("click", handleImageUrlSubmit);
   els.imageUrlInput?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
       handleImageUrlSubmit();
     }
+  });
+  els.imageUrlInput?.addEventListener("paste", handleUploadPaste);
+  els.uploadZone?.addEventListener("paste", handleUploadPaste);
+  els.uploadZone?.addEventListener("click", (event) => {
+    if (event.target instanceof HTMLElement && event.target.closest("input, button")) return;
+    els.uploadZone.focus();
   });
 
   els.copyLink?.addEventListener("click", copyShareLink);
@@ -80,6 +87,32 @@ async function handleImageUrlSubmit() {
   }
 
   await loadImageFromUrl(rawUrl);
+}
+
+async function handleUploadPaste(event) {
+  const file = extractSupportedFile(event.clipboardData);
+  if (file) {
+    event.preventDefault();
+    await loadSelectedFile(file);
+    return;
+  }
+
+  const text = event.clipboardData?.getData("text/plain")?.trim();
+  if (!text) return;
+
+  if (text.startsWith("data:image/")) {
+    event.preventDefault();
+    await loadSelectedFile(dataUrlToFile(text, "pasted-image.png"));
+    return;
+  }
+
+  if (/^https?:\/\//i.test(text)) {
+    event.preventDefault();
+    if (els.imageUrlInput) {
+      els.imageUrlInput.value = text;
+    }
+    await loadImageFromUrl(text);
+  }
 }
 
 function preparePasteZone(zone) {
