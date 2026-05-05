@@ -15,6 +15,7 @@ const state = {
 
 const els = {
   modeSummary: document.querySelector("#modeSummary"),
+  uploadPanel: document.querySelector("#uploadPanel"),
   uploadZone: document.querySelector("#uploadZone"),
   fileInput: document.querySelector("#fileInput"),
   uploadStatus: document.querySelector("#uploadStatus"),
@@ -184,16 +185,19 @@ function renderAll() {
 }
 
 function renderModeText() {
+  els.uploadPanel?.toggleAttribute("hidden", state.locked);
   if (state.locked) {
     els.modeSummary.textContent = "目前是鎖定版網址。老師與家長都開同一頁，位置固定後直接簽名。";
     els.layoutHint.textContent = "簽名欄位已鎖定。現在可把網址傳給家長，家長只要上傳同意書圖片後就能簽名。";
     els.lockField.textContent = "欄位位置已鎖定";
     els.lockField.setAttribute("disabled", "true");
+    els.lockField.classList.add("is-locked");
     els.copyLink.hidden = false;
   } else if (state.shareToken) {
     els.modeSummary.textContent = "目前是可調整版網址。老師或家長都能開同一頁，先調整簽名欄位，再按確認鎖定。";
     els.layoutHint.textContent = "請拖曳或縮放簽名欄位，確認位置後按「確認欄位並鎖定」。";
     els.lockField.removeAttribute("disabled");
+    els.lockField.classList.remove("is-locked");
     els.lockField.textContent = "確認欄位並鎖定";
     els.copyLink.hidden = true;
     els.qrPanel.hidden = true;
@@ -201,6 +205,7 @@ function renderModeText() {
     els.modeSummary.textContent = "老師先在這裡上傳同意書圖片，預設會帶出一個簽名欄位，再複製網址分享出去。";
     els.layoutHint.textContent = "先上傳同意書圖片，再複製網址給家長。家長和老師都會開同一頁。";
     els.lockField.removeAttribute("disabled");
+    els.lockField.classList.remove("is-locked");
     els.lockField.textContent = "確認欄位並鎖定";
     els.copyLink.hidden = true;
     els.qrPanel.hidden = true;
@@ -371,8 +376,9 @@ function startFieldResize(event, node) {
 function toggleLockField() {
   if (state.locked) return;
   state.locked = true;
-  updateShareLink();
+  const lockedLink = updateShareLink();
   renderAll();
+  els.copyLink?.setAttribute("data-locked-url", lockedLink);
   setStatus(els.shareStatus, "欄位位置已鎖定。現在可以把這個同一網址傳給家長簽名。", "success");
 }
 

@@ -68,6 +68,14 @@ button.is-applied:hover {
   box-shadow: 0 0 0 3px rgba(23, 99, 58, 0.16);
 }
 
+button.is-locked,
+button.is-locked:hover {
+  border-color: #17633a;
+  background: #17633a;
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(23, 99, 58, 0.16);
+}
+
 .topbar {
   padding: clamp(24px, 5vw, 56px) clamp(18px, 5vw, 56px);
   background:
