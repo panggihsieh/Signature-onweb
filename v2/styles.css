@@ -171,17 +171,44 @@ h2 {
 
 .upload {
   display: grid;
-  gap: 4px;
+  gap: 10px;
   padding: 16px;
   border: 1px dashed #9eb0bd;
   border-radius: 8px;
   background: #f8fafc;
-  cursor: pointer;
   text-align: center;
 }
 
 .upload input {
   display: none;
+}
+
+.url-upload {
+  text-align: left;
+}
+
+.url-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.url-upload input {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.url-upload input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(23, 107, 135, 0.12);
 }
 
 .upload strong {
@@ -382,7 +409,8 @@ h2 {
 
   .share-toolbar,
   .share-actions,
-  .toolbar {
+  .toolbar,
+  .url-input-row {
     grid-template-columns: 1fr;
   }
 

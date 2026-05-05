@@ -17,7 +17,8 @@ const els = {
   modeSummary: document.querySelector("#modeSummary"),
   uploadPanel: document.querySelector("#uploadPanel"),
   uploadZone: document.querySelector("#uploadZone"),
-  fileInput: document.querySelector("#fileInput"),
+  imageUrlInput: document.querySelector("#imageUrlInput"),
+  loadImageUrl: document.querySelector("#loadImageUrl"),
   uploadStatus: document.querySelector("#uploadStatus"),
   layoutHint: document.querySelector("#layoutHint"),
   shareStatus: document.querySelector("#shareStatus"),
@@ -53,15 +54,12 @@ async function init() {
 }
 
 function bindEvents() {
-  preparePasteZone(els.uploadZone);
-  els.fileInput?.addEventListener("change", handleFileInput);
-  els.uploadZone?.addEventListener("click", () => els.uploadZone.focus());
-  els.uploadZone?.addEventListener("paste", handlePaste);
-  els.uploadZone?.addEventListener("dragover", handleDragOver);
-  els.uploadZone?.addEventListener("dragleave", () => els.uploadZone.classList.remove("active"));
-  els.uploadZone?.addEventListener("drop", handleDrop);
-  window.addEventListener("paste", (event) => {
-    if (!event.defaultPrevented) handlePaste(event);
+  els.loadImageUrl?.addEventListener("click", handleImageUrlSubmit);
+  els.imageUrlInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      handleImageUrlSubmit();
+    }
   });
 
   els.copyLink?.addEventListener("click", copyShareLink);
@@ -72,6 +70,16 @@ function bindEvents() {
   els.shareImage?.addEventListener("click", shareSignedDocument);
 
   bindSignaturePad();
+}
+
+async function handleImageUrlSubmit() {
+  const rawUrl = els.imageUrlInput?.value?.trim();
+  if (!rawUrl) {
+    setStatus(els.uploadStatus, "請先貼上圖片網址。", "error");
+    return;
+  }
+
+  await loadImageFromUrl(rawUrl);
 }
 
 function preparePasteZone(zone) {
@@ -252,6 +260,46 @@ async function loadSelectedFile(file) {
     drawPlaceholder();
     renderAll();
     setStatus(els.uploadStatus, error.message || "檔案讀取失敗。", "error");
+  }
+}
+
+async function loadImageFromUrl(rawUrl) {
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch {
+    setStatus(els.uploadStatus, "網址格式不正確，請重新貼上。", "error");
+    return;
+  }
+
+  if (!["https:", "http:"].includes(parsedUrl.protocol)) {
+    setStatus(els.uploadStatus, "請貼上 http 或 https 的圖片網址。", "error");
+    return;
+  }
+
+  setStatus(els.uploadStatus, "正在載入網址圖片...", "");
+
+  try {
+    const response = await fetch(parsedUrl.href, { mode: "cors" });
+    if (!response.ok) {
+      throw new Error("圖片網址目前無法讀取。");
+    }
+
+    const blob = await response.blob();
+    const mimeType = String(blob.type || response.headers.get("content-type") || "");
+    if (!mimeType.startsWith("image/")) {
+      throw new Error("這不是可直接讀取的圖片網址。");
+    }
+
+    const fallbackName = guessImageFileName(parsedUrl, mimeType);
+    const file = new File([blob], fallbackName, { type: mimeType });
+    await loadSelectedFile(file);
+  } catch (error) {
+    setStatus(
+      els.uploadStatus,
+      error.message || "圖片網址載入失敗，請改貼可直接開啟圖片的公開網址。",
+      "error",
+    );
   }
 }
 
@@ -703,6 +751,16 @@ function readFileAsDataUrl(file) {
     reader.onerror = () => reject(new Error("檔案讀取失敗。"));
     reader.readAsDataURL(file);
   });
+}
+
+function guessImageFileName(url, mimeType) {
+  const directName = url.pathname.split("/").pop()?.trim();
+  if (directName && /\.[a-z0-9]+$/i.test(directName)) {
+    return directName;
+  }
+
+  const ext = mimeType.split("/")[1] || "png";
+  return `line-shared-image.${ext.replace(/[^a-z0-9]/gi, "") || "png"}`;
 }
 
 function dataUrlToUint8Array(dataUrl) {

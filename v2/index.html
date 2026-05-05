@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>同意書線上補簽系統 - 第二版</title>
-    <link rel="stylesheet" href="styles.css?v=v2-2" />
+    <title>同意書線上補簽系統 - LINE 手機版</title>
+    <link rel="stylesheet" href="styles.css?v=v2-3" />
   </head>
   <body data-page="shared">
     <header class="topbar shared-topbar">
       <div class="hero-copy">
         <p class="eyebrow">同意書線上補簽系統</p>
-        <h1>第二版 LINE 手機版</h1>
-        <p class="hero-hint">老師與家長使用同一網頁。先分享同意書圖片，再用網址調整簽名欄位並鎖定。</p>
+        <h1>LINE 手機版</h1>
+        <p class="hero-hint">老師與家長使用同一頁。先貼上同意書圖片網址，調整簽名欄位後鎖定，再分享給家長簽名。</p>
       </div>
     </header>
 
@@ -19,14 +19,17 @@
       <section id="uploadPanel" class="panel flow-panel">
         <div class="section-title">
           <span>1</span>
-          <h2>上傳同意書圖片</h2>
+          <h2>貼上同意書圖片網址</h2>
         </div>
         <p id="modeSummary" class="hint"></p>
-        <label id="uploadZone" class="upload paste-zone upload-dropzone" tabindex="0">
-          <input id="fileInput" type="file" accept="image/*,application/pdf,.pdf" />
-          <strong>點這裡選擇、拖曳或貼上圖片 / PDF</strong>
-          <small>老師先把同意書圖片分享給家長，再把這個網址一起傳出去。家長開啟同一頁後，上傳同一張同意書圖片即可簽名。</small>
-        </label>
+        <div id="uploadZone" class="upload url-upload">
+          <strong>貼上 LINE 分享圖片網址</strong>
+          <small>請貼上可直接開啟圖片的公開網址，再按下方按鈕載入同意書。</small>
+          <div class="url-input-row">
+            <input id="imageUrlInput" type="url" inputmode="url" placeholder="https://..." autocomplete="off" />
+            <button id="loadImageUrl" class="primary" type="button">載入圖片</button>
+          </div>
+        </div>
         <p id="uploadStatus" class="status"></p>
       </section>
 
@@ -51,7 +54,7 @@
         </div>
         <p id="signerHint" class="hint"></p>
         <div class="signature-pad-wrap">
-          <canvas id="signaturePad" width="640" height="220" aria-label="手寫簽名板"></canvas>
+          <canvas id="signaturePad" width="640" height="220" aria-label="手寫簽名欄"></canvas>
         </div>
         <div class="toolbar">
           <button id="clearSignature" type="button">清除簽名</button>
@@ -62,11 +65,11 @@
       <section class="panel flow-panel signer-panel">
         <div class="section-title sub-title">
           <span>4</span>
-          <h2>下載或分享給老師</h2>
+          <h2>下載圖片或分享給老師</h2>
         </div>
         <div class="share-actions">
-          <button id="downloadImage" class="primary" type="button">下載簽名圖片</button>
-          <button id="shareImage" type="button">分享給老師</button>
+          <button id="downloadImage" class="primary" type="button">下載已簽名圖片</button>
+          <button id="shareImage" type="button">分享到通訊軟體</button>
         </div>
         <p id="signStatus" class="status"></p>
         <img id="completedImage" class="completed-image" alt="已簽名同意書預覽" />
@@ -86,6 +89,6 @@
     </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="app.js?v=v2-2"></script>
+    <script src="app.js?v=v2-3"></script>
   </body>
 </html>
