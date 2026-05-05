@@ -185,7 +185,10 @@ function renderAll() {
 }
 
 function renderModeText() {
-  els.uploadPanel?.toggleAttribute("hidden", state.locked);
+  if (els.uploadPanel) {
+    els.uploadPanel.toggleAttribute("hidden", state.locked);
+    els.uploadPanel.style.display = state.locked ? "none" : "";
+  }
   if (state.locked) {
     els.modeSummary.textContent = "目前是鎖定版網址。老師與家長都開同一頁，位置固定後直接簽名。";
     els.layoutHint.textContent = "簽名欄位已鎖定。現在可把網址傳給家長，家長只要上傳同意書圖片後就能簽名。";
